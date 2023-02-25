@@ -1,0 +1,171 @@
+Sub ColorRows()
+
+    Dim lastRow As Long
+    Dim ws As Worksheet
+    Dim i As Long
+    Dim j As Long
+    Dim rng As Range
+    Dim cell As Range
+    Dim hasFail As Boolean
+    
+    'Get the current worksheet
+    Set ws = ActiveSheet
+    
+    'Find the last row in column F
+    lastRow = ws.Range("F" & ws.Rows.Count).End(xlUp).Row
+    
+    'Get the start date of the current week
+    Dim startOfWeek As Date
+    startOfWeek = Date - Weekday(Date, vbMonday) + 1
+    
+    'Get the end date of the current week
+    Dim endOfWeek As Date
+    endOfWeek = startOfWeek + 4
+    
+    
+    Set rngG = ws.Range("A2:A" & lastRow)
+    
+    For Each cell In rngG.Cells
+                    cell.Interior.Color = vbGreen
+    Next cell
+    
+    'Loop through each row in column F, starting from the second row
+    For i = 2 To lastRow
+        
+        'Check if the date in column F is not within the current week
+        If (ws.Range("F" & i).Value < startOfWeek Or ws.Range("F" & i).Value > endOfWeek) And IsDate(ws.Range("F" & i).Value) Then
+        
+            'Get the corresponding merged range in columns A and B
+            Set rng = ws.Range("A" & i).MergeArea
+            
+            'Reset the hasFail variable to false
+            hasFail = False
+            
+            'Loop through each cell in the merged range in column F
+            For j = 1 To rng.Cells.Count
+                
+                'Check if the cell in column F is not blank and is a valid date
+                If Not IsEmpty(rng.Cells(j).Offset(0, 5).Value) And IsDate(rng.Cells(j).Offset(0, 5).Value) Then
+                    
+                    'Check if the date is not from the ongoing week
+                    If Weekday(DateValue(rng.Cells(j).Offset(0, 5).Value)) <> Weekday(Date, vbMonday) Then
+                        
+                        'If it is not from the ongoing week, color the entire merged range in columns A and B as red
+                        For Each cell In rng.Cells
+                            cell.Interior.Color = vbRed
+                        Next cell
+                        
+                        'Add the mail ID to the recipient list
+                        recipientList = recipientList & Cells(i, 2) & "; "
+                        
+                        'Set hasFail to true and exit the loop
+                        hasFail = True
+                        Exit For
+                        
+                    End If
+                    
+                End If
+                
+            Next j
+            
+            'If none of the cells in the merged range in column F are from the ongoing week, color the entire merged range in columns A and B as red
+            If Not hasFail Then
+                For Each cell In rng.Cells
+                    cell.Interior.Color = vbRed
+                Next cell
+            End If
+        
+        
+        End If
+        
+    Next i
+    
+    
+End Sub
+
+
+
+
+
+
+
+Sub SendResourceUtilizationMail()
+    Dim rng As Range
+    Dim mergedRng As Range
+    Dim mailIDs() As String ' use an array to store mail IDs
+    Dim mailBody As String
+    Dim outlookApp As Outlook.Application
+    Dim outlookMail As Outlook.MailItem
+    
+    ReDim mailIDs(0 To 0)
+    
+    For Each rng In ActiveSheet.UsedRange.Columns("A").Cells
+        If rng.MergeCells And rng.Interior.ColorIndex = 3 Then ' Check if merged cells in column A are red
+            Set mergedRng = rng.MergeArea
+            ReDim Preserve mailIDs(0 To UBound(mailIDs) + 1) ' Resize array to store new mail ID
+            mailIDs(UBound(mailIDs)) = mergedRng.Cells(1, 2).Value ' Add mail ID to array
+            Debug.Print mergedRng.Address & " : " & mergedRng.Cells(1, 2).Value
+        End If
+    Next rng
+    
+    ' Remove duplicates from mail IDs array
+    mailIDs = RemoveDuplicates(mailIDs)
+    
+    ' Prepare mail body
+    mailBody = "Hi," & vbCrLf & vbCrLf & _
+               "This is a friendly reminder to complete your resource utilization for the current week." & vbCrLf & vbCrLf & _
+               "Thank you," & vbCrLf & _
+               "RU Team"
+    
+    ' Create Outlook application and mail item
+    Set outlookApp = New Outlook.Application
+    Set outlookMail = outlookApp.CreateItem(olMailItem)
+    
+    ' Set mail properties
+    With outlookMail
+        .Subject = "Resource Utilization Reminder"
+        .Body = mailBody
+        For i = 0 To UBound(mailIDs)
+            If mailIDs(i) <> "" Then ' Check if mail ID is not blank
+                .Recipients.Add mailIDs(i)
+            End If
+        Next i
+        .Display ' Display mail item for review
+    End With
+    
+    ' Clean up
+    Set outlookMail = Nothing
+    Set outlookApp = Nothing
+End Sub
+
+Function RemoveDuplicates(ByVal arr As Variant) As Variant
+    Dim dict As Object
+    Dim i As Long
+    
+    Set dict = CreateObject("Scripting.Dictionary")
+    
+    For i = LBound(arr) To UBound(arr)
+        If Not dict.Exists(arr(i)) And arr(i) <> "" Then
+            dict(arr(i)) = Empty
+        End If
+    Next i
+    
+    Dim result() As String
+    ReDim result(0 To dict.Count - 1)
+    
+    Dim key As Variant
+    i = 0
+    
+    For Each key In dict.Keys
+        result(i) = key
+        i = i + 1
+    Next key
+    
+    RemoveDuplicates = result
+End Function
+
+
+
+
+
+
