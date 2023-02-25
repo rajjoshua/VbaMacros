@@ -68,6 +68,8 @@ Sub ColorRows()
                 
             Next j
             
+
+            
             'If none of the cells in the merged range in column F are from the ongoing week, color the entire merged range in columns A and B as red
             If Not hasFail Then
                 For Each cell In rng.Cells
@@ -77,6 +79,23 @@ Sub ColorRows()
         
         
         End If
+        
+                    'If Not hasFail Then
+                
+                Dim sum As Double
+                Set rng = ws.Range("A" & i).MergeArea
+                sum = WorksheetFunction.sum(ws.Range("D" & rng.Row & ":D" & rng.Rows(rng.Rows.Count).Row))
+                
+                'If the sum of Column D is not 100, color the entire merged range in columns A and B as red
+                If sum <> 100 Then
+                    
+                    For Each cell In rng.Cells
+                        cell.Interior.Color = vbRed
+                    Next cell
+                 
+                End If
+                
+            'End If
         
     Next i
     
@@ -163,9 +182,3 @@ Function RemoveDuplicates(ByVal arr As Variant) As Variant
     
     RemoveDuplicates = result
 End Function
-
-
-
-
-
-
