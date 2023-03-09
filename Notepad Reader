@@ -1,0 +1,106 @@
+Sub SearchTextFile()
+
+    Dim fso As Object
+
+    Dim file As Object
+
+    Dim textstream As Object
+
+    Dim line As String
+
+    Dim searchString As String
+
+    Dim cellValue As Variant
+
+    
+
+    ' Set the Excel file path and worksheet name
+
+    Const excelFilePath As String = "C:\path\to\excel\file.xlsx"
+
+    Const worksheetName As String = "Sheet1"
+
+    
+
+    ' Set the text file path and search string
+
+    Const textFilePath As String = "C:\path\to\text\file.txt"
+
+    
+
+    ' Open the Excel workbook and worksheet
+
+    Dim wb As Workbook
+
+    Set wb = Workbooks.Open(excelFilePath)
+
+    Dim ws As Worksheet
+
+    Set ws = wb.Worksheets(worksheetName)
+
+    
+
+    ' Get the last row of data in column A
+
+    Dim lastRow As Long
+
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    
+
+    ' Create a FileSystemObject and open the text file using a TextStream object
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    Set file = fso.GetFile(textFilePath)
+
+    Set textstream = file.OpenAsTextStream(1, -2)
+
+    
+
+    ' Loop through each value in column A and search for it in the text file
+
+    For Each cellValue In ws.Range("A1:A" & lastRow).Value
+
+        searchString = cellValue
+
+        ' Loop through each line of the text file and search for the search string
+
+        textstream.Position = 0
+
+        Do While Not textstream.AtEndOfStream
+
+            line = textstream.ReadLine
+
+            If InStr(1, line, searchString, vbTextCompare) > 0 Then
+
+                ' If the search string is found in the line, print the line text to the Immediate window
+
+                Debug.Print line
+
+            End If
+
+        Loop
+
+    Next
+
+    
+
+    ' Close the TextStream object and release the file object
+
+    textstream.Close
+
+    Set textstream = Nothing
+
+    Set file = Nothing
+
+    Set fso = Nothing
+
+    
+
+    ' Close the workbook
+
+    wb.Close SaveChanges:=False
+
+End Sub
+
