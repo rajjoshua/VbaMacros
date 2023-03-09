@@ -1,0 +1,27 @@
+import xlrd
+
+# Open the Excel file
+
+workbook = xlrd.open_workbook('excel_file.xlsx')
+
+# Select the first sheet in the Excel file
+
+sheet = workbook.sheet_by_index(0)
+
+# Open the Notepad file in read mode
+
+with open('notepad_file.txt', 'r') as file:
+
+    # Read the entire file into memory
+
+    file_text = file.read()
+
+    # Check if any cell in the Excel file contains the text from the Notepad file
+
+    for row in range(sheet.nrows):
+
+        for col in range(sheet.ncols):
+
+            if sheet.cell(row, col).value in file_text:
+
+                print(f"Found {sheet.cell(row, col).value} in row {row+1} of Excel file")
