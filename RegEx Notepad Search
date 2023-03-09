@@ -1,0 +1,62 @@
+Sub SearchTextFile()
+
+    ' Set the file path and search string
+
+    Const filePath As String = "C:\path\to\file.txt"
+
+    Const searchString As String = "string to search for"
+
+    
+
+    ' Create a FileSystemObject and open the text file
+
+    Dim fso As Object
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    Dim fileContents As String
+
+    fileContents = fso.OpenTextFile(filePath, 1).ReadAll
+
+    
+
+    ' Use a regular expression to search for the search string in the file contents
+
+    Dim regex As Object
+
+    Set regex = CreateObject("VBScript.RegExp")
+
+    regex.Pattern = searchString
+
+    regex.Global = True
+
+    If regex.Test(fileContents) Then
+
+        ' If the search string is found in the file contents, print the matches to the Immediate window
+
+        Dim matches As Object
+
+        Set matches = regex.Execute(fileContents)
+
+        Dim match As Object
+
+        For Each match In matches
+
+            Debug.Print match.Value
+
+        Next
+
+    End If
+
+    
+
+    ' Release the objects
+
+    Set matches = Nothing
+
+    Set regex = Nothing
+
+    Set fso = Nothing
+
+End Sub
+
