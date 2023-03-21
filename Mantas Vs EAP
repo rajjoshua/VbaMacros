@@ -1,0 +1,11 @@
+Mantas is a financial crime and compliance monitoring software that helps banks and financial institutions detect and prevent money laundering, fraud, and other financial crimes.
+
+Mantas uses advanced analytics and machine learning algorithms to analyze large volumes of transaction data and identify suspicious activity. It also provides real-time alerts and case management tools to help investigators manage their cases more effectively.
+
+However, Mantas can be expensive and complex to implement, which can be a barrier for some organizations. That's where EAP comes in. EAP, or Enterprise Architecture Planning, is a methodology for designing and managing large-scale information systems.
+
+EAP can be used to replicate Mantas's capabilities by breaking down the problem into smaller, more manageable pieces. This involves identifying the key data sources, defining the rules for identifying suspicious activity, and building the necessary infrastructure to support the system.
+
+EAP can also help organizations integrate Mantas-like functionality into their existing systems. This involves identifying the key points of integration, building the necessary connectors, and developing the necessary workflows to ensure that data is flowing smoothly between systems.
+
+Overall, while Mantas is a powerful tool for financial crime and compliance monitoring, it may not be suitable for all organizations. EAP can be used to replicate Mantas's capabilities and integrate them into existing systems, providing a more flexible and cost-effective solution for organizations of all sizes.
