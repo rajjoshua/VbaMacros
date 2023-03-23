@@ -1,0 +1,22 @@
+import pandas as pd
+
+# read in the input data frame
+df = pd.read_excel('input_data.xlsx')
+
+# define the name of the StepAction column
+step_action_col = 'StepAction'
+
+# create an empty list to store the report data
+report_rows = []
+
+# loop through each row of the input data frame and check each column after the StepAction column for the "#" character
+for index, row in df.iterrows():
+    for col in row.index[row.index.get_loc(step_action_col)+1:]:
+        if '# ' in row[col]:
+            report_rows.append({'StepAction': row[step_action_col], 'Roles': col, 'StringThatHas#': row[col]})
+
+# create a new data frame from the report rows list
+report_df = pd.DataFrame(report_rows, columns=['StepAction', 'Roles', 'StringThatHas#'])
+
+# write the report data frame to a new Excel file
+report_df.to_excel('report.xlsx', index=False)
