@@ -1,0 +1,33 @@
+import pandas as pd
+
+# read in the input data frame
+df = pd.read_excel('input_data.xlsx')
+
+# define the name of the StepAction column, as well as the names of the Step and Action columns
+step_action_col = 'StepAction'
+step_col = 'Step'
+action_col = 'Action'
+
+# create an empty list to store the report data
+report_rows = []
+
+# loop through each row of the input data frame and check each column after the StepAction column for the "#" character
+for index, row in df.iterrows():
+    for col in row.index[row.index.get_loc(step_action_col)+1:]:
+        if '# ' in row[col]:
+            # split the value in the last column with the delimiter "#"
+            us_sm, dev_sm = row[col].split('#')
+            report_rows.append({
+                'Step': row[step_col],
+                'Action': row[action_col],
+                'StepAction': row[step_action_col],
+                'Roles': col,
+                'US SM': us_sm.strip(),
+                'Dev SM': dev_sm.strip()
+            })
+
+# create a new data frame from the report rows list
+report_df = pd.DataFrame(report_rows, columns=['Step', 'Action', 'StepAction', 'Roles', 'US SM', 'Dev SM'])
+
+# write the report data frame to a new Excel file
+report_df.to_excel('report.xlsx', index=False)
