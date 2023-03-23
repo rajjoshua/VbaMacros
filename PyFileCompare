@@ -1,0 +1,25 @@
+import pandas as pd
+
+# read in the two Excel files
+df1 = pd.read_excel('file1.xlsx')
+df2 = pd.read_excel('file2.xlsx')
+
+# set the primary key column(s)
+key_cols = ['id']
+
+# merge the two dataframes on the primary key
+merged_df = pd.merge(df1, df2, on=key_cols, how='outer', suffixes=('_file1', '_file2'))
+
+# create a new dataframe for storing mismatches
+mismatch_df = pd.DataFrame(columns=key_cols)
+
+# loop through the columns and compare their values
+for col in merged_df.columns:
+    if col not in key_cols:
+        col_mismatch = (merged_df[col+'_file1'] != merged_df[col+'_file2'])
+        if col_mismatch.any():
+            # add the primary key and mismatched values to the mismatch dataframe
+            mismatch_df = pd.concat([mismatch_df, merged_df.loc[col_mismatch, key_cols + [col+'_file1', col+'_file2']]])
+
+# write the mismatch dataframe to a new Excel file
+mismatch_df.to_excel('mismatch_report.xlsx', index=False)
