@@ -1,0 +1,19 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# read in the input data frame
+df = pd.read_excel('input_data.xlsx')
+
+# count the number of entries for each role
+role_counts = df.iloc[:, 3:].apply(pd.Series.value_counts).sum(axis=1)
+
+# create a horizontal bar chart
+role_counts.plot(kind='barh')
+
+# set the chart title and axis labels
+plt.title('Number of Entries by Role')
+plt.xlabel('Number of Entries')
+plt.ylabel('Role')
+
+# show the chart
+plt.show()
