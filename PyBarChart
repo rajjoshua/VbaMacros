@@ -7,13 +7,16 @@ df = pd.read_excel('input_data.xlsx')
 # count the number of entries in the 'Roles' column
 role_counts = df['Roles'].value_counts()
 
+# sort the roles by count and save the order
+role_order = role_counts.sort_values(ascending=False).index
+
 # create a bar chart of the role counts
-plt.bar(role_counts.index, role_counts.values)
+plt.barh(range(len(role_order)), role_counts[role_order])
 
 # add labels to the chart
 plt.title('Number of Entries by Role')
-plt.xlabel('Role')
-plt.ylabel('Count')
+plt.xlabel('Count')
+plt.yticks(range(len(role_order)), role_order)
 
 # display the chart
 plt.show()
