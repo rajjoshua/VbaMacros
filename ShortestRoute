@@ -35,8 +35,8 @@ while queue and not found_target:
         visited.add(curr_step)
         if curr_step == target_step:
             found_target = True
-        else:
-            for next_step, roles in step_dict.get(curr_step, {}).items():
+        elif curr_step in step_dict:
+            for next_step, roles in step_dict[curr_step].items():
                 if roles:
                     queue.append(next_step)
 
