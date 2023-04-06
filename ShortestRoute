@@ -12,8 +12,8 @@ data = []
 for row in ws.iter_rows(min_row=2, values_only=True):
     data.append(row)
 
-# Extract role names from header row
-role_names = ws[1][2:]
+# Get the column headers for the roles
+role_headers = [cell.value for cell in ws[3][2:]]
 
 # Build a dictionary of steps and their possible next steps and roles
 step_dict = {}
@@ -24,7 +24,7 @@ for row in data:
     for i, role in enumerate(roles):
         if role.lower() == "yes":
             step_dict[curr_step] = step_dict.get(curr_step, {})
-            step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [role_names[i]]
+            step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [role_headers[i]]
 
 # Perform breadth-first search to find shortest path from "Initiated" to target step
 visited = set()
