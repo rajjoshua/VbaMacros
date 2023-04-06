@@ -1,8 +1,5 @@
 import openpyxl
 
-# Prompt user to enter target step
-target_step = input("Enter the target step: ")
-
 # Read data from Excel sheet
 # Assume the data is in the format specified in the original question
 # Column A = Step, Column B = Action, Column C onward = Roles
@@ -14,67 +11,75 @@ for row in ws.iter_rows(min_row=2, values_only=True):
 
 # Build a dictionary of steps and their possible next steps and roles
 step_dict = {}
-roles = ws[3:]  # Get the cell values from row 3 onwards
 for row in data:
     curr_step = row[0]
     next_step = row[1]
-    for i, cell in enumerate(row[2:]):
-        role_name = roles[i][0].value  # Get the role name from the cell in row 3
-        if cell.lower() == "yes":
+    roles = row[2:]
+    for i, role in enumerate(roles):
+        if role.lower() == "yes":
             step_dict[curr_step] = step_dict.get(curr_step, {})
-            step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [role_name]
+            step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [f"Role {i + 1}"]
 
-# Perform breadth-first search to find shortest path from "Initiated" to target step
-visited = set()
-queue = []
-start_step = "Initiated"
-queue.append(start_step)
-found_target = False
-while queue and not found_target:
-    curr_step = queue.pop(0)
-    if curr_step not in visited:
-        visited.add(curr_step)
-        if curr_step == target_step:
-            found_target = True
-        else:
-            for next_step, roles in step_dict.get(curr_step, {}).items():
-                if roles:
-                    queue.append(next_step)
+# Prompt user to enter target steps (comma-separated)
+target_steps = input("Enter the target steps (comma-separated): ")
+target_steps = target_steps.split(",")
 
-# If target step is found, construct path and output table
-if found_target:
-    step_sequence = []
-    curr_step = target_step
-    while curr_step != start_step:
-        step_sequence.append(curr_step)
-        for prev_step, roles in step_dict.items():
-            if curr_step in roles and prev_step in visited:
-                curr_step = prev_step
-                break
-    step_sequence.append(start_step)
-    step_sequence.reverse()
+# Create a new Excel workbook to write output to
+output_wb = openpyxl.Workbook()
+output_ws = output_wb.active
 
-    # Create a new Excel workbook to write output to
-    output_wb = openpyxl.Workbook()
-    output_ws = output_wb.active
+# Write header row to new Excel sheet
+header_row = ["Step"]
+for target_step in target_steps:
+    header_row.append(f"Roles for {target_step}")
+output_ws.append(header_row)
 
-    # Write output table to new Excel sheet
-    output_table = []
-    for i, step in enumerate(step_sequence[:-1]):
-        roles = ", ".join(step_dict.get(step, {}).get(step_sequence[i+1], []))
-        output_table.append([step, roles])
+# Iterate through target steps and output table for each
+for target_step in target_steps:
+    # Perform breadth-first search to find shortest path from "Initiated" to target step
+    visited = set()
+    queue = []
+    start_step = "Initiated"
+    queue.append(start_step)
+    found_target = False
+    while queue and not found_target:
+        curr_step = queue.pop(0)
+        if curr_step not in visited:
+            visited.add(curr_step)
+            if curr_step == target_step:
+                found_target = True
+            else:
+                for next_step, roles in step_dict.get(curr_step, {}).items():
+                    if roles:
+                        queue.append(next_step)
 
-    # Write header row to new Excel sheet
-    output_ws.append(["Step", f"Roles for {target_step}"])
+    # If target step is found, construct path and output row
+    if found_target:
+        step_sequence = []
+        curr_step = target_step
+        while curr_step != start_step:
+            step_sequence.append(curr_step)
+            for prev_step, roles in step_dict.items():
+                if curr_step in roles and prev_step in visited:
+                    curr_step = prev_step
+                    break
+        step_sequence.append(start_step)
+        step_sequence.reverse()
 
-    # Write data rows to new Excel sheet
-    for row in output_table:
-        output_ws.append(row)
+        # Construct output row
+        output_row = [target_step]
+        for i, step in enumerate(step_sequence[:-1]):
+            roles = ", ".join(step_dict.get(step, {}).get(step_sequence[i+1], []))
+            output_row.append(roles)
 
-    # Save new Excel workbook
-    output_wb.save("output.xlsx")
+        # Write output row to new Excel sheet
+        output_ws.append(output_row)
 
-    # Print success message
-    print(f"Output written to output.xlsx")
-else:
-    print(f"Target step '{target_step}' not found.")
+    else:
+        print(f"Target step '{target_step}' not found.")
+
+# Save new Excel workbook
+output_wb.save("output.xlsx")
+
+# Print success message
+print(f"Output written to output.xlsx")
