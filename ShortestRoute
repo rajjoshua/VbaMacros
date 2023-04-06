@@ -1,44 +1,59 @@
 import openpyxl
 
-# load the workbook and select the worksheet
-wb = openpyxl.load_workbook('input.xlsx')
-ws = wb.active
+# Load the input workbook
+input_wb = openpyxl.load_workbook("input.xlsx")
 
-# create a new workbook for the output
+# Get the active worksheet
+input_ws = input_wb.active
+
+# Create a new workbook for the output
 output_wb = openpyxl.Workbook()
+
+# Get the active worksheet in the output workbook
 output_ws = output_wb.active
 
-# get user input for target step
-target_step = input("Enter the target step: ")
+# Write the headers for the output table
+output_ws["A1"] = "Step"
+output_ws["B1"] = "Roles"
 
-# write headers to output worksheet
-output_ws.cell(row=1, column=1, value="Step")
-output_ws.cell(row=1, column=2, value="Role(s)")
+# Get the maximum row and column count
+max_row = input_ws.max_row
+max_col = input_ws.max_column
 
-# initialize variables
-current_step = "Initiated"
-current_row = 2
+# Create a dictionary to store the role columns
+roles = {}
 
-# loop through steps until target step is reached
-while current_step != target_step:
-    # get possible target steps for current step
-    possible_targets = ws.cell(row=current_row, column=2).value.split(",")
+# Loop through each row of the input worksheet
+for row in range(2, max_row+1):
+    # Get the source step from column A
+    source_step = input_ws.cell(row=row, column=1).value
     
-    # loop through possible target steps
-    for target in possible_targets:
-        # check if target matches user input
-        if target.strip() == target_step:
-            # write current step and roles to output worksheet
-            output_ws.cell(row=current_row, column=1, value=current_step)
-            role_names = [ws.cell(row=1, column=j).value for j in range(3, ws.max_column+1) if ws.cell(row=current_row, column=j).value == "Yes"]
-            output_ws.cell(row=current_row, column=2, value=", ".join(role_names))
-            # update current step to target step
-            current_step = target_step
-            # exit loop
-            break
-    else:
-        # if target step not found in possible targets, move to next row
-        current_row += 1
+    # Get the target steps from column B
+    target_steps = input_ws.cell(row=row, column=2).value.split(",")
+    
+    # Loop through each target step
+    for target_step in target_steps:
+        # Get the roles that can perform the step change from the respective column
+        for col in range(3, max_col+1):
+            role_name = input_ws.cell(row=1, column=col).value
+            if role_name not in roles:
+                roles[role_name] = []
+            role_value = input_ws.cell(row=row, column=col).value
+            if role_value == "Yes":
+                roles[role_name].append(target_step)
+        
+        # Write the source step and target step to the output worksheet
+        output_ws.append([source_step, target_step])
+        
+        # Write the roles that can perform the step change to the output worksheet
+        role_list = []
+        for role_name, allowed_steps in roles.items():
+            if target_step in allowed_steps:
+                role_list.append(role_name)
+        output_ws.cell(row=output_ws.max_row, column=2, value=", ".join(role_list))
 
-# save the output workbook
-output_wb.save('output.xlsx')
+        # Clear the roles dictionary for the next target step
+        roles.clear()
+
+# Save the output workbook
+output_wb.save("output.xlsx")
