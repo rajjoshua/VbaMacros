@@ -1,0 +1,74 @@
+import openpyxl
+
+# Prompt user to enter target step
+target_step = input("Enter the target step: ")
+
+# Read data from Excel sheet
+# Assume the data is in the format specified in the original question
+# Column A = Step, Column B = Action, Column C onward = Roles
+wb = openpyxl.load_workbook(filename='data.xlsx')
+ws = wb.active
+data = []
+for row in ws.iter_rows(min_row=2, values_only=True):
+    data.append(row)
+
+# Build a dictionary of steps and their possible next steps and roles
+step_dict = {}
+for row in data:
+    curr_step = row[0]
+    next_step = row[1]
+    roles = row[2:]
+    for i, role in enumerate(roles):
+        if role.lower() == "yes":
+            step_dict[curr_step] = step_dict.get(curr_step, {})
+            step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [i]
+
+# Perform breadth-first search to find shortest path from "Initiated" to target step
+visited = set()
+queue = []
+start_step = "Initiated"
+queue.append(start_step)
+found_target = False
+while queue and not found_target:
+    curr_step = queue.pop(0)
+    if curr_step not in visited:
+        visited.add(curr_step)
+        if curr_step == target_step:
+            found_target = True
+        else:
+            for next_step, roles in step_dict.get(curr_step, {}).items():
+                if roles:
+                    queue.append(next_step)
+
+# If target step is found, construct path and output table
+if found_target:
+    step_sequence = []
+    curr_step = target_step
+    while curr_step != start_step:
+        step_sequence.append(curr_step)
+        for prev_step, roles in step_dict.items():
+            if curr_step in roles and prev_step in visited:
+                curr_step = prev_step
+                break
+    step_sequence.append(start_step)
+    step_sequence.reverse()
+    
+    output_table = []
+    for step in step_sequence:
+        roles = step_dict.get(step, {})
+        role_list = []
+        for role_index in roles.get(target_step, []):
+            role_list.append(f"Role {role_index + 1}")
+        output_table.append([step, ", ".join(role_list)])
+    
+    # Write the output to a new Excel sheet
+    output_wb = openpyxl.Workbook()
+    output_ws = output_wb.active
+    output_ws.title = "Output"
+    output_ws.append(["Step", "Role(s)"])
+    for row in output_table:
+        output_ws.append(row)
+    output_wb.save(filename="output.xlsx")
+    print(f"Output written to output.xlsx.")
+else:
+    print(f"Target step '{target_step}' not found.")
