@@ -1,59 +1,79 @@
 import openpyxl
 
-# Load the input workbook
-input_wb = openpyxl.load_workbook("input.xlsx")
+# Prompt user to enter target step
+target_step = input("Enter the target step: ")
 
-# Get the active worksheet
-input_ws = input_wb.active
+# Read data from Excel sheet
+# Assume the data is in the format specified in the original question
+# Column A = Step, Column B = Action, Column C onward = Roles
+wb = openpyxl.load_workbook(filename='data.xlsx')
+ws = wb.active
+data = []
+for row in ws.iter_rows(min_row=2, values_only=True):
+    data.append(row)
 
-# Create a new workbook for the output
-output_wb = openpyxl.Workbook()
+# Build a dictionary of steps and their possible next steps and roles
+step_dict = {}
+for row in data:
+    curr_step = row[0]
+    next_step = row[1]
+    roles = row[2:]
+    for i, role in enumerate(roles):
+        if role.lower() == "yes":
+            step_dict[curr_step] = step_dict.get(curr_step, {})
+            step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [f"Role {i + 1}"]
 
-# Get the active worksheet in the output workbook
-output_ws = output_wb.active
+# Perform breadth-first search to find shortest path from "Initiated" to target step
+visited = set()
+queue = []
+start_step = "Initiated"
+queue.append(start_step)
+found_target = False
+while queue and not found_target:
+    curr_step = queue.pop(0)
+    if curr_step not in visited:
+        visited.add(curr_step)
+        if curr_step == target_step:
+            found_target = True
+        else:
+            for next_step, roles in step_dict.get(curr_step, {}).items():
+                if roles:
+                    queue.append(next_step)
 
-# Write the headers for the output table
-output_ws["A1"] = "Step"
-output_ws["B1"] = "Roles"
+# If target step is found, construct path and output table
+if found_target:
+    step_sequence = []
+    curr_step = target_step
+    while curr_step != start_step:
+        step_sequence.append(curr_step)
+        for prev_step, roles in step_dict.items():
+            if curr_step in roles and prev_step in visited:
+                curr_step = prev_step
+                break
+    step_sequence.append(start_step)
+    step_sequence.reverse()
 
-# Get the maximum row and column count
-max_row = input_ws.max_row
-max_col = input_ws.max_column
+    # Create a new Excel workbook to write output to
+    output_wb = openpyxl.Workbook()
+    output_ws = output_wb.active
 
-# Create a dictionary to store the role columns
-roles = {}
+    # Write output table to new Excel sheet
+    output_table = []
+    for i, step in enumerate(step_sequence):
+        roles = ", ".join(step_dict.get(step, {}).get(step_sequence[i+1], []))
+        output_table.append([step, roles])
 
-# Loop through each row of the input worksheet
-for row in range(2, max_row+1):
-    # Get the source step from column A
-    source_step = input_ws.cell(row=row, column=1).value
-    
-    # Get the target steps from column B
-    target_steps = input_ws.cell(row=row, column=2).value.split(",")
-    
-    # Loop through each target step
-    for target_step in target_steps:
-        # Get the roles that can perform the step change from the respective column
-        for col in range(3, max_col+1):
-            role_name = input_ws.cell(row=1, column=col).value
-            if role_name not in roles:
-                roles[role_name] = []
-            role_value = input_ws.cell(row=row, column=col).value
-            if role_value == "Yes":
-                roles[role_name].append(target_step)
-        
-        # Write the source step and target step to the output worksheet
-        output_ws.append([source_step, target_step])
-        
-        # Write the roles that can perform the step change to the output worksheet
-        role_list = []
-        for role_name, allowed_steps in roles.items():
-            if target_step in allowed_steps:
-                role_list.append(role_name)
-        output_ws.cell(row=output_ws.max_row, column=2, value=", ".join(role_list))
+    # Write header row to new Excel sheet
+    output_ws.append(["Step", f"Roles for {target_step}"])
 
-        # Clear the roles dictionary for the next target step
-        roles.clear()
+    # Write data rows to new Excel sheet
+    for row in output_table:
+        output_ws.append(row)
 
-# Save the output workbook
-output_wb.save("output.xlsx")
+    # Save new Excel workbook
+    output_wb.save("output.xlsx")
+
+    # Print success message
+    print(f"Output written to output.xlsx")
+else:
+    print(f"Target step '{target_step}' not found.")
