@@ -1,0 +1,39 @@
+# Define a function to find all possible steps from a start to end point
+def find_steps(start, end, table):
+    # Initialize an empty list to store the steps
+    steps = []
+
+    # Check if the start and end points are in the table
+    if (start, end) in table:
+        steps.append((start, end, table[(start, end)]))
+    else:
+        # Loop over all possible intermediate points
+        for k in set(x[0] for x in table.keys() if x[1] == end):
+            # Recursively find the steps from start to intermediate point
+            intermediate_steps = find_steps(start, k, table)
+            # Add the intermediate steps to the list
+            steps += intermediate_steps
+            # If the intermediate point is connected to the end point, add the final step
+            if (k, end) in table:
+                steps.append((k, end, table[(k, end)]))
+   
+    # Return the list of steps
+    return steps
+
+# Test the function with different start and end points
+start = 'a'
+end = 'c'
+steps = find_steps(start, end, table)
+print(f'Steps from {start} to {end}:')
+for s in steps:
+    print(f'{s[0]} -> {s[1]} ({s[2]})')
+
+start = 'a'
+end = 'g'
+steps = find_steps(start, end, table)
+print(f'Steps from {start} to {end}:')
+if len(steps) == 0:
+    print('No possible steps')
+else:
+    for s in steps:
+        print(f'{s[0]} -> {s[1]} ({s[2]})')
