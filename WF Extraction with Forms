@@ -1,0 +1,89 @@
+import openpyxl
+import tkinter as tk
+from tkinter import ttk
+
+# Define function to generate output report
+def generate_report():
+    # Get selected start and end steps from dropdown menus
+    start_step = start_step_dropdown.get()
+    end_step = end_step_dropdown.get()
+
+    # Read data from Excel sheet
+    # Assume the data is in the format specified in the original question
+    # Column A = Step, Column B = Action, Column C onward = Roles
+    wb = openpyxl.load_workbook(filename='data.xlsx')
+    ws = wb.active
+    data = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        data.append(row)
+
+    # Build a dictionary of steps and their possible next steps and roles
+    step_dict = {}
+    for row in data:
+        curr_step = row[0]
+        next_step = row[1]
+        roles = row[2:]
+        for i, role in enumerate(roles):
+            if role.lower() == "yes":
+                step_dict[curr_step] = step_dict.get(curr_step, {})
+                step_dict[curr_step][next_step] = step_dict[curr_step].get(next_step, []) + [f"Role {i + 1}"]
+
+    # Perform breadth-first search to find shortest path from start step to end step
+    visited = set()
+    queue = []
+    queue.append(start_step)
+    found_end = False
+    while queue and not found_end:
+        curr_step = queue.pop(0)
+        if curr_step not in visited:
+            visited.add(curr_step)
+            if curr_step == end_step:
+                found_end = True
+            else:
+                for next_step, roles in step_dict.get(curr_step, {}).items():
+                    if roles:
+                        queue.append(next_step)
+
+    # If end step is found, construct path and output table
+    if found_end:
+        step_sequence = []
+        curr_step = end_step
+        while curr_step != start_step:
+            step_sequence.append(curr_step)
+            for prev_step, roles in step_dict.items():
+                if curr_step in roles and prev_step in visited:
+                    curr_step = prev_step
+                    break
+        step_sequence.append(start_step)
+        step_sequence.reverse()
+
+        # Print output report
+        print("From Step\tTo Step\tRole Required")
+        for i in range(len(step_sequence) - 1):
+            roles = ", ".join(step_dict.get(step_sequence[i], {}).get(step_sequence[i + 1], []))
+            print(f"{step_sequence[i]}\t{step_sequence[i + 1]}\t{roles}")
+    else:
+        print(f"End step '{end_step}' not found from start step '{start_step}'.")
+
+
+# Create GUI window
+root = tk.Tk()
+root.title("Step Change Analyzer")
+
+# Create label for start step dropdown menu
+start_step_label = ttk.Label(root, text="Start Step:")
+start_step_label.pack(padx=5, pady=5)
+
+# Create dropdown menu for start step
+start_step_options = ["Initiated", "Research"]
+start_step_dropdown = ttk.Combobox(root, values=start_step_options)
+start_step_dropdown.pack(padx=5, pady=5)
+start_step_dropdown.current(0)
+
+# Create label for end step dropdown menu
+end_step_label = ttk.Label(root, text="End Step:")
+end_step_label.pack(padx=5, pady=5)
+
+# Create dropdown menu for end step
+end_step_options = ["QA Closed", "InitClosed"]
+end_step_dropdown = ttk.Combobox(root, values=end_step_options)
