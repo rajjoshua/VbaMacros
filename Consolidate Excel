@@ -1,0 +1,59 @@
+Sub ConsolidateData()
+
+    'Declare variables
+    Dim path As String
+    Dim filename As String
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim newWB As Workbook
+    Dim newWS As Worksheet
+    Dim lastRow As Long
+    Dim i As Integer
+    Dim j As Integer
+    
+    'Set the path of the folder containing the Excel files
+    path = "C:\Your\Folder\Path\"
+    
+    'Create a new workbook to store the consolidated data
+    Set newWB = Workbooks.Add
+    
+    'Set the active sheet in the new workbook
+    Set newWS = newWB.ActiveSheet
+    
+    'Loop through all the Excel files in the folder
+    filename = Dir(path & "*.xlsx")
+    Do While filename <> ""
+    
+        'Open the workbook and set the active sheet
+        Set wb = Workbooks.Open(path & filename)
+        Set ws = wb.Sheets(1)
+        
+        'Find the last row of data in the sheet
+        lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+        
+        'Copy the data to the new workbook
+        For j = 1 To lastRow
+            For i = 1 To ws.UsedRange.Columns.Count
+                newWS.Cells(newWS.Rows.Count, i).End(xlUp).Offset(1, 0).Value = ws.Cells(j, i).Value
+            Next i
+            newWS.Cells(newWS.Rows.Count, 1).End(xlUp).Offset(1, 0).Value = ""
+        Next j
+        
+        'Close the workbook
+        wb.Close SaveChanges:=False
+        
+        'Get the next file name
+        filename = Dir()
+        
+    Loop
+    
+    'Autofit columns in the new workbook
+    newWS.Columns.AutoFit
+    
+    'Save the new workbook
+    newWB.SaveAs Filename:=path & "ConsolidatedData.xlsx", FileFormat:=xlOpenXMLWorkbook
+    
+    'Close the new workbook
+    newWB.Close SaveChanges:=True
+    
+End Sub
