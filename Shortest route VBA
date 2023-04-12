@@ -1,0 +1,95 @@
+Sub ShortestPath()
+
+    Dim targetSteps As Variant
+    targetSteps = Split(InputBox("Enter target steps (separated by comma):"), ",")
+    
+    Dim ws As Worksheet
+    Set ws = ActiveWorkbook.ActiveSheet
+    
+    Dim data As Variant
+    data = ws.Range("A2").CurrentRegion.Value
+    
+    Dim stepDict As Object
+    Set stepDict = CreateObject("Scripting.Dictionary")
+    
+    Dim i As Long, j As Long
+    For i = 2 To UBound(data)
+        Dim currStep As String
+        currStep = data(i, 1)
+        Dim nextStep As String
+        nextStep = data(i, 2)
+        For j = 3 To UBound(data, 2)
+            If LCase(data(1, j)) Like "role *" Then
+                If LCase(data(i, j)) = "yes" Then
+                    If Not stepDict.Exists(currStep) Then
+                        Set stepDict(currStep) = CreateObject("Scripting.Dictionary")
+                    End If
+                    If Not stepDict(currStep).Exists(nextStep) Then
+                        Set stepDict(currStep)(nextStep) = CreateObject("Scripting.Dictionary")
+                    End If
+                    stepDict(currStep)(nextStep)(j - 2) = True
+                End If
+            End If
+        Next j
+    Next i
+    
+    Dim startStep As String
+    startStep = "Initiated"
+    
+    Dim visited As Object
+    Set visited = CreateObject("Scripting.Dictionary")
+    
+    Dim queue As Object
+    Set queue = CreateObject("System.Collections.Queue")
+    queue.Enqueue startStep
+    
+    Dim foundTarget As Boolean
+    foundTarget = False
+    
+    Dim currStep As String
+    While queue.Count > 0 And Not foundTarget
+        currStep = queue.Dequeue
+        If Not visited.Exists(currStep) Then
+            visited(currStep) = True
+            If IsInArray(currStep, targetSteps) Then
+                foundTarget = True
+            Else
+                Dim nextSteps As Object
+                Set nextSteps = stepDict(currStep)
+                Dim nextStep As Variant
+                For Each nextStep In nextSteps.Keys
+                    If nextSteps(nextStep).Count > 0 Then
+                        queue.Enqueue nextStep
+                    End If
+                Next nextStep
+            End If
+        End If
+    Wend
+    
+    If foundTarget Then
+        Dim stepSequence() As String
+        ReDim stepSequence(0 To 0)
+        stepSequence(0) = targetSteps(0)
+        currStep = targetSteps(0)
+        While currStep <> startStep
+            Dim prevSteps As Object
+            Set prevSteps = CreateObject("Scripting.Dictionary")
+            Dim prevStep As Variant
+            For Each prevStep In stepDict.Keys
+                Dim nextSteps As Object
+                Set nextSteps = stepDict(prevStep)
+                If nextSteps.Exists(currStep) And visited.Exists(prevStep) Then
+                    prevSteps(prevStep) = True
+                End If
+            Next prevStep
+            Dim numPrevSteps As Long
+            numPrevSteps = prevSteps.Count
+            If numPrevSteps > 0 Then
+                ReDim Preserve stepSequence(0 To numPrevSteps)
+                For i = 1 To numPrevSteps
+                    stepSequence(i) = prevSteps.Keys()(i - 1)
+                Next i
+                currStep = stepSequence(UBound(stepSequence) - 1)
+            Else
+                MsgBox "Error: No path found from " & startStep & " to " & targetSteps(0)
+               
