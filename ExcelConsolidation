@@ -1,0 +1,46 @@
+Option Explicit
+
+Sub ConsolidateWorkbooks()
+
+    Dim ConsolidatedWB As Workbook
+    Dim DirectoryPath As String
+    Dim FileName As String
+    Dim Worksheet As Worksheet
+    Dim VBAEditor As VBE
+    Dim WB As Workbook
+    Dim WS As Worksheet
+    Dim i As Long
+    
+    DirectoryPath = "C:\your_folder\" 'Specify directory path where the files are stored
+
+    Set ConsolidatedWB = Workbooks.Add 'Create a new Workbook for consolidated data
+
+    FileName = Dir(DirectoryPath & "*.xls*") 'Get the first Excel file
+
+    Do While FileName <> ""
+        'Open the Excel file
+        Set WB = Workbooks.Open(Filename:=DirectoryPath & FileName)
+
+        'Loop through each Worksheet in the Workbook
+        For Each WS In WB.Worksheets
+            'If this is the first file, use the existing header
+            If ConsolidatedWB.Sheets.Count = 1 And ConsolidatedWB.Sheets(1).Cells(1, 1) = "" Then
+                WS.UsedRange.Copy Destination:=ConsolidatedWB.Sheets(1).Cells(1, 1)
+            'If not, do not include the header and copy the rest
+            Else
+                'Find the last row on the target worksheet
+                i = ConsolidatedWB.Sheets(1).Cells(Cells.Rows.Count, 1).End(xlUp).Row + 1
+                'Copy the data from the source without the header
+                WS.Range("A2:" & WS.Cells(WS.Rows.Count, 1).End(xlUp).Address).Copy Destination:=ConsolidatedWB.Sheets(1).Cells(i, 1)
+            End If
+        Next WS
+
+        WB.Close savechanges:=False 'Close the source workbook without saving changes
+        FileName = Dir() 'Get the next file
+    Loop
+
+    Set WB = Nothing
+    Set ConsolidatedWB = Nothing
+
+End Sub
+
