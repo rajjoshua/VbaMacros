@@ -1,0 +1,24 @@
+
+Sub Bug_MoveToClosed_CanPost(CanPost)
+    On Error Resume Next
+    
+    ' Check if the current user belongs to the restricted role
+    Dim restrictedRole
+    restrictedRole = "Citi Deployment" ' Replace with the actual restricted role name
+    
+    Dim userRole
+    userRole = TDConnection.UserRole
+    
+    If userRole = restrictedRole Then
+        ' If the user is in the restricted role, prevent changes to closed defects
+        If Bug_Fields("BG_STATUS").Value = "Closed" Then
+            CanPost = False
+            Bug_Fields("BG_STATUS").IsReadOnly = True
+            
+            ' Display current role name in a message box
+            MsgBox "You are currently logged in with the role: " & userRole, vbInformation, "Restricted Role"
+        End If
+    End If
+    
+    On Error GoTo 0
+End Sub
