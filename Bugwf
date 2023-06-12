@@ -1,0 +1,12 @@
+Sub Bug_FieldCanChange(FieldName, NewValue)
+    On Error Resume Next
+
+    If Bug_Fields("BG_STATUS").Value = "Closed" Then
+        If FieldName <> "BG_STATUS" Then
+            Msgbox "You cannot modify a closed defect."
+            Bug_FieldCanChange = False
+        End If
+    End If
+
+    On Error GoTo 0
+End Sub
