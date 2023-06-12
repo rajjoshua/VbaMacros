@@ -1,0 +1,27 @@
+Sub ShowUserGroup()
+    On Error Resume Next
+    
+    ' Get the current user name
+    Dim userName
+    userName = TDConnection.UserName
+    
+    ' Execute a SQL query to retrieve the user's group
+    Dim query
+    query = "SELECT AG_GROUP_NAME FROM AG_GROUP_USERS WHERE AG_USER_NAME = '" & userName & "'"
+    
+    Dim recordSet
+    Set recordSet = TDConnection.Command.Execute(query)
+    
+    ' Fetch the group information from the query result
+    Dim userGroup
+    If Not recordSet.EOF Then
+        userGroup = recordSet.Fields("AG_GROUP_NAME").Value
+    Else
+        userGroup = "Unknown Group"
+    End If
+    
+    ' Display current user group in a message box
+    MsgBox "Current User Group: " & userGroup, vbInformation, "User Group"
+    
+    On Error GoTo 0
+End Sub
