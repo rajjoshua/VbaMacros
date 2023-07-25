@@ -1,0 +1,61 @@
+Option Explicit
+
+Sub GenerateReport()
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("SheetName")
+    
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+    
+    Dim i As Long
+    Dim key As String
+    Dim monthYear As String
+    monthYear = "MonthYear"
+    
+    For i = 2 To lastRow
+        If Format(ws.Cells(i, "ExecutionDateColumn"), "m/yyyy") = monthYear Then
+            key = ws.Cells(i, "ProjectLevel4Column") & "|" & ws.Cells(i, "AutomationColumn")
+            If Not dict.exists(key) Then
+                dict.Add key, CreateObject("Scripting.Dictionary")
+                dict(key).Add "Executed", 0
+                dict(key).Add "NoRunOrNotCompleted", 0
+                dict(key).Add "Total", 0
+            End If
+            dict(key)("Total") = dict(key)("Total") + 1
+            If ws.Cells(i, "TestStatusColumn") = "No Run" Or ws.Cells(i, "TestStatusColumn") = "Not Completed" Then
+                dict(key)("NoRunOrNotCompleted") = dict(key)("NoRunOrNotCompleted") + 1
+            ElseIf ws.Cells(i, "TestStatusColumn") <> "NA" Then
+                dict(key)("Executed") = dict(key)("Executed") + 1
+            End If
+        End If
+    Next i
+
+    'Create a new worksheet for the report
+    Dim wsReport As Worksheet
+    Set wsReport = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    wsReport.Name = "Report"
+
+    wsReport.Cells(1, 1).Value = "Project"
+    wsReport.Cells(1, 2).Value = "Type"
+    wsReport.Cells(1, 3).Value = "Executed TCs"
+    wsReport.Cells(1, 4).Value = "No Run/Not Completed TCs"
+    wsReport.Cells(1, 5).Value = "Total TCs"
+
+    Dim r As Long
+    r = 2
+    Dim project As Variant
+    Dim type As Variant
+    For Each key In dict.keys
+        project = Split(key, "|")(0)
+        type = Split(key, "|")(1)
+        wsReport.Cells(r, 1).Value = project
+        wsReport.Cells(r, 2).Value = type
+        wsReport.Cells(r, 3).Value = dict(key)("Executed")
+        wsReport.Cells(r, 4).Value = dict(key)("NoRunOrNotCompleted")
+        wsReport.Cells(r, 5).Value = dict(key)("Total")
+        r = r + 1
+    Next key
+End Sub
