@@ -2,10 +2,21 @@ Option Explicit
 
 Sub GenerateReport()
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("SheetName")
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change to your sheet name
+    
+    ' Define column indices
+    Dim projectLevel4Column As Integer
+    Dim automationColumn As Integer
+    Dim testStatusColumn As Integer
+    Dim executionDateColumn As Integer
+    
+    projectLevel4Column = ws.Columns("A").Column ' assuming ProjectLevel4Column is column A
+    automationColumn = ws.Columns("B").Column ' assuming AutomationColumn is column B
+    testStatusColumn = ws.Columns("C").Column ' assuming TestStatusColumn is column C
+    executionDateColumn = ws.Columns("D").Column ' assuming ExecutionDateColumn is column D
     
     Dim lastRow As Long
-    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.Count, projectLevel4Column).End(xlUp).Row
     
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
@@ -13,23 +24,39 @@ Sub GenerateReport()
     Dim i As Long
     Dim key As String
     Dim monthYear As String
-    monthYear = "MonthYear"
+    monthYear = "DesiredMonth/DesiredYear" ' Change to your desired month and year
     
     For i = 2 To lastRow
-        If Format(ws.Cells(i, "ExecutionDateColumn"), "m/yyyy") = monthYear Then
-            key = ws.Cells(i, "ProjectLevel4Column") & "|" & ws.Cells(i, "AutomationColumn")
-            If Not dict.exists(key) Then
-                dict.Add key, CreateObject("Scripting.Dictionary")
-                dict(key).Add "Executed", 0
-                dict(key).Add "NoRunOrNotCompleted", 0
-                dict(key).Add "Total", 0
+        key = ws.Cells(i, projectLevel4Column).Value
+        If Not dict.exists(key) Then
+            dict.Add key, CreateObject("Scripting.Dictionary")
+            dict(key).Add "ExecutedAuto", 0
+            dict(key).Add "ExecutedManual", 0
+            dict(key).Add "TotalExecuted", 0
+            dict(key).Add "TotalNoRunOrNotCompleted", 0
+            dict(key).Add "TotalAuto", 0
+            dict(key).Add "TotalManual", 0
+            dict(key).Add "Total", 0
+        End If
+        
+        dict(key)("Total") = dict(key)("Total") + 1
+        
+        If ws.Cells(i, automationColumn).Value = "Automation" Then
+            dict(key)("TotalAuto") = dict(key)("TotalAuto") + 1
+            If ws.Cells(i, testStatusColumn).Value = "No Run" Or ws.Cells(i, testStatusColumn).Value = "Not Completed" Then
+                dict(key)("TotalNoRunOrNotCompleted") = dict(key)("TotalNoRunOrNotCompleted") + 1
+            ElseIf ws.Cells(i, testStatusColumn).Value <> "NA" And Format(ws.Cells(i, executionDateColumn).Value, "m/yyyy") = monthYear Then
+                dict(key)("ExecutedAuto") = dict(key)("ExecutedAuto") + 1
             End If
-            dict(key)("Total") = dict(key)("Total") + 1
-            If ws.Cells(i, "TestStatusColumn") = "No Run" Or ws.Cells(i, "TestStatusColumn") = "Not Completed" Then
-                dict(key)("NoRunOrNotCompleted") = dict(key)("NoRunOrNotCompleted") + 1
-            ElseIf ws.Cells(i, "TestStatusColumn") <> "NA" Then
-                dict(key)("Executed") = dict(key)("Executed") + 1
+        ElseIf ws.Cells(i, automationColumn).Value = "Manual" Then
+            dict(key)("TotalManual") = dict(key)("TotalManual") + 1
+            If ws.Cells(i, testStatusColumn).Value <> "NA" And Format(ws.Cells(i, executionDateColumn).Value, "m/yyyy") = monthYear Then
+                dict(key)("ExecutedManual") = dict(key)("ExecutedManual") + 1
             End If
+        End If
+        
+        If ws.Cells(i, testStatusColumn).Value <> "NA" And Format(ws.Cells(i, executionDateColumn).Value, "m/yyyy") = monthYear Then
+            dict(key)("TotalExecuted") = dict(key)("TotalExecuted") + 1
         End If
     Next i
 
@@ -38,24 +65,30 @@ Sub GenerateReport()
     Set wsReport = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
     wsReport.Name = "Report"
 
-    wsReport.Cells(1, 1).Value = "Project"
-    wsReport.Cells(1, 2).Value = "Type"
-    wsReport.Cells(1, 3).Value = "Executed TCs"
-    wsReport.Cells(1, 4).Value = "No Run/Not Completed TCs"
-    wsReport.Cells(1, 5).Value = "Total TCs"
+    ' Column headers
+    wsReport.Cells(1, 1).Value = "Project Name"
+    wsReport.Cells(1, 2).Value = "Executed Automation TC's"
+    wsReport.Cells(1, 3).Value = "Executed Manual TC's"
+    wsReport.Cells(1, 4).Value = "Total Executed TC's"
+    wsReport.Cells(1, 5).Value = "Total No Run/Not Completed Automation TC's"
+    wsReport.Cells(1, 6).Value = "Total Automation TC's"
+    wsReport.Cells(1, 7).Value = "Total Manual TC's"
+    wsReport.Cells(1, 8).Value = "Total TC's in Scope"
 
     Dim r As Long
     r = 2
-    Dim project As Variant
-    Dim type As Variant
-    For Each key In dict.keys
-        project = Split(key, "|")(0)
-        type = Split(key, "|")(1)
-        wsReport.Cells(r, 1).Value = project
-        wsReport.Cells(r, 2).Value = type
-        wsReport.Cells(r, 3).Value = dict(key)("Executed")
-        wsReport.Cells(r, 4).Value = dict(key)("NoRunOrNotCompleted")
-        wsReport.Cells(r, 5).Value = dict(key)("Total")
+    Dim keys As Variant
+    keys = dict.keys
+    For i = 0 To dict.Count - 1
+        key = keys(i)
+        wsReport.Cells(r, 1).Value = key
+        wsReport.Cells(r, 2).Value = dict(key)("ExecutedAuto")
+        wsReport.Cells(r, 3).Value = dict(key)("ExecutedManual")
+        wsReport.Cells(r, 4).Value = dict(key)("TotalExecuted")
+        wsReport.Cells(r, 5).Value = dict(key)("TotalNoRunOrNotCompleted")
+        wsReport.Cells(r, 6).Value = dict(key)("TotalAuto")
+        wsReport.Cells(r, 7).Value = dict(key)("TotalManual")
+        wsReport.Cells(r, 8).Value = dict(key)("Total")
         r = r + 1
-    Next key
+    Next i
 End Sub
