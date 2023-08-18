@@ -17,3 +17,30 @@ End Function
 
 Dim extractedText As String
 extractedText = ExtractBetweenQuotes(OlMail.Subject)
+
+Function ExtractTextFromMultiplePatterns(text As String) As String
+    Dim regEx As New RegExp
+    Dim matches As MatchCollection
+    Dim match As match
+    Dim patterns As Variant
+    Dim pattern As Variant
+
+    ' Define patterns
+    patterns = Array("""(.*?)""", "'(.*?)'", "'(.*?)""")
+    
+    ' Loop through patterns and return the first match
+    For Each pattern In patterns
+        regEx.Pattern = pattern
+        regEx.Global = True
+
+        Set matches = regEx.Execute(text)
+        If matches.Count > 0 Then
+            Set match = matches(0)
+            ExtractTextFromMultiplePatterns = match.SubMatches(0)
+            Exit Function
+        End If
+    Next pattern
+
+    ' If no patterns match
+    ExtractTextFromMultiplePatterns = ""
+End Function
