@@ -1,0 +1,19 @@
+Function ExtractBetweenQuotes(text As String) As String
+    Dim regEx As New RegExp
+    Dim matches As MatchCollection
+    Dim match As match
+
+    regEx.Pattern = """(.*?)""" 'Pattern to match any string between double quotes
+    regEx.Global = True
+
+    Set matches = regEx.Execute(text)
+    If matches.Count > 0 Then
+        Set match = matches(0)
+        ExtractBetweenQuotes = match.SubMatches(0)
+    Else
+        ExtractBetweenQuotes = ""
+    End If
+End Function
+
+Dim extractedText As String
+extractedText = ExtractBetweenQuotes(OlMail.Subject)
