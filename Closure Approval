@@ -5,8 +5,10 @@ Sub ExtractDetailsFromEmailAndDocument()
     Dim WordDoc As Object
     Dim WordApp As Object
     Dim tbl As Object, row As Object
-    Dim ApproversInWord As String, EmailSender As String
+    Dim ApproversInWord As String, SenderName As String
     Dim EmbeddedMail As Outlook.MailItem
+    Dim FirstLines As String
+    Dim LineArray() As String
 
     ' Get the selected mail
     On Error Resume Next
@@ -48,15 +50,22 @@ Sub ExtractDetailsFromEmailAndDocument()
         MsgBox "Approvers from Word Document:" & vbNewLine & ApproversInWord
     End If
 
-    ' Loop through embedded email attachments and display sender addresses
+    ' Loop through embedded email attachments, check if "approved" is in the top response and display sender names
     For Each objAttachment In OlMail.Attachments
         If objAttachment.Type = olEmbeddeditem Then
             ' Save and Open the embedded email
             objAttachment.SaveAsFile Environ("Temp") & "\embeddedMail.msg"
             Set EmbeddedMail = Application.CreateItemFromTemplate(Environ("Temp") & "\embeddedMail.msg")
             
-            EmailSender = EmbeddedMail.SenderEmailAddress
-            MsgBox "Sender Email Address: " & EmailSender
+            ' Extract the first few lines of the email
+            LineArray = Split(EmbeddedMail.Body, vbNewLine)
+            FirstLines = Join(Array(LineArray(0), LineArray(1), LineArray(2)), " ") ' Assuming the response is within the first three lines
+
+            ' Check if the word "approved" is in the top response
+            If InStr(1, FirstLines, "approved", vbTextCompare) > 0 Then
+                SenderName = EmbeddedMail.SenderName
+                MsgBox "Sender Name (Approved found in top response): " & SenderName
+            End If
         End If
     Next objAttachment
 
