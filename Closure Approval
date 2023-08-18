@@ -1,35 +1,33 @@
-Function ExtractName(s As String) As String
-    Dim regEx As New RegExp
-    With regEx
-        .Global = False
-        .Pattern = "^[A-Za-z, ]+"
-        .IgnoreCase = True
-    End With
-    
-    Dim matches As MatchCollection
-    Set matches = regEx.Execute(s)
-    
-    If matches.Count > 0 Then
-        ExtractName = Trim(matches(0).Value)
-    Else
-        ExtractName = s
-    End If
-End Function
-
-Sub ExtractDetailsFromEmailAndDocument()
+Sub ExtractAndValidateApprovers()
 
     Dim OlMail As Outlook.MailItem
     Dim objAttachment As Outlook.Attachment
     Dim WordDoc As Object
     Dim WordApp As Object
     Dim tbl As Object, row As Object
-    Dim ApproversInWord As String, SenderName As String, SendersInMails As String
+    Dim ApproversInWord As Collection
+    Dim ApproversInMail As Collection
+    Dim regEx As New RegExp
+    Dim matches As MatchCollection
     Dim EmbeddedMail As Outlook.MailItem
     Dim FirstLines As String
     Dim LineArray() As String
+    Dim NameInDoc As String, NameInMail As String
+    Dim MismatchedNames As String
+
+    ' Initialize collections
+    Set ApproversInWord = New Collection
+    Set ApproversInMail = New Collection
+
+    ' Set up the regular expression for name extraction
+    With regEx
+        .Global = False
+        .MultiLine = True
+        .IgnoreCase = True
+        .Pattern = "^[A-Z,]+"
+    End With
 
     ' Get the selected mail
-    On Error Resume Next
     Set OlMail = Application.ActiveExplorer.Selection.Item(1)
 
     ' Extract Approvers from Word Attachment
@@ -50,7 +48,10 @@ Sub ExtractDetailsFromEmailAndDocument()
                     Set tbl = WordDoc.Tables(3)
                     For Each row In tbl.Rows
                         If InStr(row.Cells(5).Range.Text, "X") > 0 Then
-                            ApproversInWord = ApproversInWord & ExtractName(Trim(row.Cells(1).Range.Text)) & vbNewLine
+                            Set matches = regEx.Execute(Trim(row.Cells(1).Range.Text))
+                            If matches.Count > 0 Then
+                                ApproversInWord.Add matches(0).Value
+                            End If
                         End If
                     Next row
                 End If
@@ -63,12 +64,10 @@ Sub ExtractDetailsFromEmailAndDocument()
         Next objAttachment
     End If
 
-    ' Show approver names from the Word document
-    If ApproversInWord <> "" Then
-        MsgBox "Approvers from Word Document:" & vbNewLine & ApproversInWord
-    End If
+    ' Display approver names from the Word document
+    MsgBox "Approvers from Word Document:" & vbNewLine & Join(ApproversInWord.ToArray, vbNewLine)
 
-    ' Loop through embedded email attachments, check if "approved" is in the top response and display sender names
+    ' Loop through embedded email attachments, check if "approved" is in the top response and collect sender names
     For Each objAttachment In OlMail.Attachments
         If objAttachment.Type = olEmbeddeditem Then
             ' Save and Open the embedded email
@@ -81,41 +80,44 @@ Sub ExtractDetailsFromEmailAndDocument()
 
             ' Check if the word "approved" is in the top response
             If InStr(1, FirstLines, "approved", vbTextCompare) > 0 Then
-                SendersInMails = SendersInMails & ExtractName(EmbeddedMail.SenderName) & vbNewLine
+                Set matches = regEx.Execute(EmbeddedMail.SenderName)
+                If matches.Count > 0 Then
+                    ApproversInMail.Add matches(0).Value
+                End If
             End If
         End If
     Next objAttachment
 
-    ' Show sender names from the emails
-    If SendersInMails <> "" Then
-        MsgBox "Senders from Mails:" & vbNewLine & SendersInMails
-    End If
+    ' Display approver names from the email attachments
+    MsgBox "Approvers from Email Attachments:" & vbNewLine & Join(ApproversInMail.ToArray, vbNewLine)
 
-    ' Validation
-    Dim arrApproversInWord() As String
-    Dim arrSendersInMails() As String
-    Dim matchingNames As String, mismatchedNames As String
+    ' Compare the two lists and generate the validation message
+    Dim ValidationMsg As String
+    Dim Approver As Variant
 
-    arrApproversInWord = Split(ApproversInWord, vbNewLine)
-    arrSendersInMails = Split(SendersInMails, vbNewLine)
-
-    For i = LBound(arrApproversInWord) To UBound(arrApproversInWord)
-        If arrApproversInWord(i) <> "" Then
-            If InStr(1, SendersInMails, arrApproversInWord(i), vbTextCompare) > 0 Then
-                matchingNames = matchingNames & arrApproversInWord(i) & vbNewLine
-            Else
-                mismatchedNames = mismatchedNames & arrApproversInWord(i) & vbNewLine
-            End If
+    For Each Approver In ApproversInWord
+        If Not ExistsInCollection(ApproversInMail, Approver) Then
+            MismatchedNames = MismatchedNames & "Name in Document but not in Email: " & Approver & vbNewLine
         End If
-    Next i
+    Next Approver
 
-    ' Display results
-    If matchingNames <> "" Then
-        MsgBox "Matching Names:" & vbNewLine & matchingNames
+    For Each Approver In ApproversInMail
+        If Not ExistsInCollection(ApproversInWord, Approver) Then
+            MismatchedNames = MismatchedNames & "Name in Email but not in Document: " & Approver & vbNewLine
+        End If
+    Next Approver
+
+    If MismatchedNames = "" Then
+        ValidationMsg = "Validation Successful! No mismatches identified." & vbNewLine
+        ValidationMsg = ValidationMsg & "Number of approvers in document: " & ApproversInWord.Count & vbNewLine
+        ValidationMsg = ValidationMsg & "Number of approvers in email attachments: " & ApproversInMail.Count
+    Else
+        ValidationMsg = "Validation Failed! Mismatches found:" & vbNewLine & MismatchedNames & vbNewLine
+        ValidationMsg = ValidationMsg & "Number of approvers in document: " & ApproversInWord.Count & vbNewLine
+        ValidationMsg = ValidationMsg & "Number of approvers in email attachments: " & ApproversInMail.Count
     End If
-    If mismatchedNames <> "" Then
-        MsgBox "Mismatched Names:" & vbNewLine & mismatchedNames
-    End If
+
+    MsgBox ValidationMsg
 
     Set OlMail = Nothing
     Set objAttachment = Nothing
@@ -124,3 +126,11 @@ Sub ExtractDetailsFromEmailAndDocument()
     Set WordApp = Nothing
 
 End Sub
+
+Function ExistsInCollection(col As Collection, key As Variant) As Boolean
+    On Error GoTo ErrHandler
+    ExistsInCollection = Not IsEmpty(col.Item(key))
+    Exit Function
+ErrHandler:
+    ExistsInCollection = False
+End Function
