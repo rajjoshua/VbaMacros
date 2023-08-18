@@ -137,9 +137,13 @@ Function ExtractName(fullName As String) As String
 End Function
 
 Function ExistsInCollection(col As Collection, key As Variant) As Boolean
-    On Error GoTo ErrHandler
-    ExistsInCollection = Not IsEmpty(col.Item(key))
-    Exit Function
-ErrHandler:
-    ExistsInCollection = False
+    Dim tempVar As Variant
+    On Error Resume Next
+    tempVar = col.Item(key)
+    If Err.Number = 0 Then
+        ExistsInCollection = True
+    Else
+        ExistsInCollection = False
+    End If
+    On Error GoTo 0
 End Function
