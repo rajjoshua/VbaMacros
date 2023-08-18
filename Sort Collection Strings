@@ -1,0 +1,38 @@
+Function SortCollection(col As Collection) As Collection
+    Dim arr() As Variant
+    Dim i As Long
+    Dim item As Variant
+    Dim newCol As New Collection
+
+    ' Convert collection to array
+    ReDim arr(1 To col.Count)
+    i = 1
+    For Each item In col
+        arr(i) = item
+        i = i + 1
+    Next item
+
+    ' Sort the array
+    Call BubbleSort(arr)
+
+    ' Convert array back to collection
+    For i = LBound(arr) To UBound(arr)
+        newCol.Add arr(i)
+    Next i
+
+    Set SortCollection = newCol
+End Function
+
+Sub BubbleSort(ByRef arr() As Variant)
+    Dim temp As Variant
+    Dim i As Long, j As Long
+    For i = LBound(arr) To UBound(arr) - 1
+        For j = i + 1 To UBound(arr)
+            If LCase(arr(i)) > LCase(arr(j)) Then
+                temp = arr(i)
+                arr(i) = arr(j)
+                arr(j) = temp
+            End If
+        Next j
+    Next i
+End Sub
