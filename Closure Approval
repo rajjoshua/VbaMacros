@@ -1,18 +1,26 @@
-Sub ExtractDetailsFromEmailAndDocument()
+Sub ValidateApprovers()
 
     Dim OlMail As Outlook.MailItem
     Dim objAttachment As Outlook.Attachment
     Dim WordDoc As Object
     Dim WordApp As Object
     Dim tbl As Object, row As Object
-    Dim ApproversInWord As String, SenderName As String
+    Dim ApproversInWord As Collection
     Dim EmbeddedMail As Outlook.MailItem
     Dim FirstLines As String
     Dim LineArray() As String
+    Dim ValidatedNames As Collection
+    Dim ValidationMsg As String
+    Dim IsValidated As Boolean
+
+    ' Initialize collections
+    Set ApproversInWord = New Collection
+    Set ValidatedNames = New Collection
 
     ' Get the selected mail
     On Error Resume Next
     Set OlMail = Application.ActiveExplorer.Selection.Item(1)
+    On Error GoTo 0
 
     ' Extract Approvers from Word Attachment
     If Not OlMail Is Nothing Then
@@ -28,11 +36,12 @@ Sub ExtractDetailsFromEmailAndDocument()
                 Set WordDoc = WordApp.Documents.Open(Environ("Temp") & "\" & objAttachment.FileName)
                 WordApp.Visible = False
 
+                ' Extract approver names
                 If WordDoc.Tables.Count >= 3 Then
                     Set tbl = WordDoc.Tables(3)
                     For Each row In tbl.Rows
                         If InStr(row.Cells(5).Range.Text, "X") > 0 Then
-                            ApproversInWord = ApproversInWord & Trim(row.Cells(1).Range.Text) & vbNewLine
+                            ApproversInWord.Add Trim(row.Cells(1).Range.Text)
                         End If
                     Next row
                 End If
@@ -45,12 +54,7 @@ Sub ExtractDetailsFromEmailAndDocument()
         Next objAttachment
     End If
 
-    ' Show approver names from the Word document
-    If ApproversInWord <> "" Then
-        MsgBox "Approvers from Word Document:" & vbNewLine & ApproversInWord
-    End If
-
-    ' Loop through embedded email attachments, check if "approved" is in the top response and display sender names
+    ' Loop through embedded email attachments and validate sender names
     For Each objAttachment In OlMail.Attachments
         If objAttachment.Type = olEmbeddeditem Then
             ' Save and Open the embedded email
@@ -59,20 +63,56 @@ Sub ExtractDetailsFromEmailAndDocument()
             
             ' Extract the first few lines of the email
             LineArray = Split(EmbeddedMail.Body, vbNewLine)
-            FirstLines = Join(Array(LineArray(0), LineArray(1), LineArray(2)), " ") ' Assuming the response is within the first three lines
+            FirstLines = Join(Array(LineArray(0), LineArray(1), LineArray(2)), " ")
 
-            ' Check if the word "approved" is in the top response
+            ' Check if "approved" is in the top response and sender name is in the approver list
             If InStr(1, FirstLines, "approved", vbTextCompare) > 0 Then
-                SenderName = EmbeddedMail.SenderName
-                MsgBox "Sender Name (Approved found in top response): " & SenderName
+                If Contains(ApproversInWord, EmbeddedMail.SenderName) Then
+                    ValidatedNames.Add EmbeddedMail.SenderName
+                End If
             End If
         End If
     Next objAttachment
 
+    ' Check each name for validation
+    IsValidated = True
+    For Each name In ApproversInWord
+        If Not Contains(ValidatedNames, name) Then
+            IsValidated = False
+            Exit For
+        End If
+    Next name
+
+    ' Create validation result message
+    If IsValidated Then
+        ValidationMsg = "All approvers from the Word document have sent approval emails."
+    Else
+        ValidationMsg = "Mismatch in approvers from Word document and approval emails."
+    End If
+
+    MsgBox ValidationMsg
+
+    ' Clear objects
     Set OlMail = Nothing
     Set objAttachment = Nothing
     Set EmbeddedMail = Nothing
     Set WordDoc = Nothing
     Set WordApp = Nothing
+    Set ApproversInWord = Nothing
+    Set ValidatedNames = Nothing
 
 End Sub
+
+' Helper function to check if an item exists in a collection
+Function Contains(col As Collection, value As Variant) As Boolean
+    Dim item As Variant
+    On Error Resume Next
+    For Each item In col
+        If item = value Then
+            Contains = True
+            Exit Function
+        End If
+    Next item
+    Contains = False
+    On Error GoTo 0
+End Function
