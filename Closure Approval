@@ -11,7 +11,10 @@ Sub ValidateApprovers()
     Dim LineArray() As String
     Dim ValidatedNames As Collection
     Dim ValidationMsg As String
-    Dim IsValidated As Boolean
+    Dim UnvalidatedNames As String
+    Dim approverName As Variant
+    Dim NamesInDocument As String
+    Dim NamesInMails As String
 
     ' Initialize collections
     Set ApproversInWord = New Collection
@@ -42,6 +45,7 @@ Sub ValidateApprovers()
                     For Each row In tbl.Rows
                         If InStr(row.Cells(5).Range.Text, "X") > 0 Then
                             ApproversInWord.Add Trim(row.Cells(1).Range.Text)
+                            NamesInDocument = NamesInDocument & Trim(row.Cells(1).Range.Text) & vbNewLine
                         End If
                     Next row
                 End If
@@ -53,6 +57,9 @@ Sub ValidateApprovers()
             End If
         Next objAttachment
     End If
+
+    ' Display names from the Word document
+    MsgBox "Names in the Word document:" & vbNewLine & NamesInDocument
 
     ' Loop through embedded email attachments and validate sender names
     For Each objAttachment In OlMail.Attachments
@@ -69,25 +76,27 @@ Sub ValidateApprovers()
             If InStr(1, FirstLines, "approved", vbTextCompare) > 0 Then
                 If Contains(ApproversInWord, EmbeddedMail.SenderName) Then
                     ValidatedNames.Add EmbeddedMail.SenderName
+                    NamesInMails = NamesInMails & EmbeddedMail.SenderName & vbNewLine
                 End If
             End If
         End If
     Next objAttachment
 
-    ' Check each name for validation
-    IsValidated = True
-    For Each name In ApproversInWord
-        If Not Contains(ValidatedNames, name) Then
-            IsValidated = False
-            Exit For
-        End If
-    Next name
+    ' Display names from the mails
+    MsgBox "Names in the mails:" & vbNewLine & NamesInMails
 
-    ' Create validation result message
-    If IsValidated Then
+    ' Check each name for validation and create detailed feedback
+    UnvalidatedNames = ""
+    For Each approverName In ApproversInWord
+        If Not Contains(ValidatedNames, approverName) Then
+            UnvalidatedNames = UnvalidatedNames & approverName & vbNewLine
+        End If
+    Next approverName
+
+    If UnvalidatedNames = "" Then
         ValidationMsg = "All approvers from the Word document have sent approval emails."
     Else
-        ValidationMsg = "Mismatch in approvers from Word document and approval emails."
+        ValidationMsg = "Mismatch in approvers from Word document and approval emails. Unvalidated names:" & vbNewLine & UnvalidatedNames
     End If
 
     MsgBox ValidationMsg
