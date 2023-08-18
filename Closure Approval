@@ -1,24 +1,19 @@
-Sub ValidateApprovers()
+Sub ValidateApprovals()
 
     Dim OlMail As Outlook.MailItem
     Dim objAttachment As Outlook.Attachment
     Dim WordDoc As Object
     Dim WordApp As Object
     Dim tbl As Object, row As Object
-    Dim ApproversInWord As Collection
+    Dim ApproversInWord As String, SenderName As String
     Dim EmbeddedMail As Outlook.MailItem
     Dim FirstLines As String
     Dim LineArray() As String
-    Dim ValidatedNames As Collection
-    Dim ValidationMsg As String
-    Dim UnvalidatedNames As String
-    Dim approverName As Variant
-    Dim NamesInDocument As String
-    Dim NamesInMails As String
-
-    ' Initialize collections
-    Set ApproversInWord = New Collection
-    Set ValidatedNames = New Collection
+    Dim SendersInMails As String
+    Dim ApproversList() As String, SendersList() As String
+    Dim i As Integer, j As Integer
+    Dim MatchingNames As String
+    Dim UnmatchedNames As String
 
     ' Get the selected mail
     On Error Resume Next
@@ -33,19 +28,15 @@ Sub ValidateApprovers()
                 objAttachment.SaveAsFile Environ("Temp") & "\" & objAttachment.FileName
 
                 ' Open the Word document
-                Set WordApp = GetObject(, "Word.Application")
-                If WordApp Is Nothing Then Set WordApp = CreateObject("Word.Application")
-
+                Set WordApp = CreateObject("Word.Application")
                 Set WordDoc = WordApp.Documents.Open(Environ("Temp") & "\" & objAttachment.FileName)
                 WordApp.Visible = False
 
-                ' Extract approver names
                 If WordDoc.Tables.Count >= 3 Then
                     Set tbl = WordDoc.Tables(3)
                     For Each row In tbl.Rows
                         If InStr(row.Cells(5).Range.Text, "X") > 0 Then
-                            ApproversInWord.Add Trim(row.Cells(1).Range.Text)
-                            NamesInDocument = NamesInDocument & Trim(row.Cells(1).Range.Text) & vbNewLine
+                            ApproversInWord = ApproversInWord & Trim(row.Cells(1).Range.Text) & vbNewLine
                         End If
                     Next row
                 End If
@@ -58,90 +49,63 @@ Sub ValidateApprovers()
         Next objAttachment
     End If
 
-    ' Display names from the Word document
-    MsgBox "Names in the Word document:" & vbNewLine & NamesInDocument
+    ' Show approver names from the Word document
+    MsgBox "Approvers from Word Document:" & vbNewLine & ApproversInWord
 
-    ' Loop through embedded email attachments and validate sender names
+    ' Loop through embedded email attachments, check if "approved" is in the top response, and collect sender names
     For Each objAttachment In OlMail.Attachments
         If objAttachment.Type = olEmbeddeditem Then
             ' Save and Open the embedded email
             objAttachment.SaveAsFile Environ("Temp") & "\embeddedMail.msg"
             Set EmbeddedMail = Application.CreateItemFromTemplate(Environ("Temp") & "\embeddedMail.msg")
 
-            ' Extract sender name from the email body
-            Dim Sender As String
-            Sender = ExtractSenderFromEmail(EmbeddedMail.Body)
-            
-            ' Add extracted sender name to NamesInMails
-            NamesInMails = NamesInMails & Sender & vbNewLine
-
             ' Extract the first few lines of the email
             LineArray = Split(EmbeddedMail.Body, vbNewLine)
             FirstLines = Join(Array(LineArray(0), LineArray(1), LineArray(2)), " ")
 
-            ' Check if "approved" is in the top response and sender name is in the approver list
+            ' Check if the word "approved" is in the top response
             If InStr(1, FirstLines, "approved", vbTextCompare) > 0 Then
-                If Contains(ApproversInWord, Sender) Then
-                    ValidatedNames.Add Sender
-                End If
+                SendersInMails = SendersInMails & EmbeddedMail.SenderName & vbNewLine
             End If
         End If
     Next objAttachment
 
-    ' Display names from the mails
-    MsgBox "Names in the mails:" & vbNewLine & NamesInMails
+    ' Show sender names from the emails
+    MsgBox "Sender Names from Emails:" & vbNewLine & SendersInMails
 
-    ' Check each name for validation and create detailed feedback
-    UnvalidatedNames = ""
-    For Each approverName In ApproversInWord
-        If Not Contains(ValidatedNames, approverName) Then
-            UnvalidatedNames = UnvalidatedNames & approverName & vbNewLine
+    ' Split the names into arrays for comparison
+    ApproversList = Split(Trim(ApproversInWord), vbNewLine)
+    SendersList = Split(Trim(SendersInMails), vbNewLine)
+
+    ' Check for matching and unmatched names
+    For i = 0 To UBound(ApproversList)
+        Dim matchFound As Boolean
+        matchFound = False
+
+        For j = 0 To UBound(SendersList)
+            If ApproversList(i) = SendersList(j) Then
+                MatchingNames = MatchingNames & ApproversList(i) & vbNewLine
+                matchFound = True
+                Exit For
+            End If
+        Next j
+
+        If Not matchFound Then
+            UnmatchedNames = UnmatchedNames & ApproversList(i) & vbNewLine
         End If
-    Next approverName
+    Next i
 
-    If UnvalidatedNames = "" Then
-        ValidationMsg = "All approvers from the Word document have sent approval emails."
+    ' Display the validation results
+    If UnmatchedNames = "" Then
+        MsgBox "All approvers from the Word document have sent approval emails." & vbNewLine & "Matching Names:" & vbNewLine & MatchingNames
     Else
-        ValidationMsg = "Mismatch in approvers from Word document and approval emails. Unvalidated names:" & vbNewLine & UnvalidatedNames
+        MsgBox "Mismatch in approvers from Word document and approval emails." & vbNewLine & "Unmatched Names:" & vbNewLine & UnmatchedNames
     End If
 
-    MsgBox ValidationMsg
-
-    ' Clear objects
     Set OlMail = Nothing
     Set objAttachment = Nothing
     Set EmbeddedMail = Nothing
     Set WordDoc = Nothing
     Set WordApp = Nothing
-    Set ApproversInWord = Nothing
-    Set ValidatedNames = Nothing
 
 End Sub
-
-' Helper function to check if an item exists in a collection
-Function Contains(col As Collection, value As Variant) As Boolean
-    Dim item As Variant
-    On Error Resume Next
-    For Each item In col
-        If item = value Then
-            Contains = True
-            Exit Function
-        End If
-    Next item
-    Contains = False
-    On Error GoTo 0
-End Function
-
-' Function to extract sender name from email body
-Function ExtractSenderFromEmail(ByVal EmailBody As String) As String
-    Dim arrLines() As String
-    Dim strLine As String, i As Long
-    arrLines = Split(EmailBody, vbNewLine)
-    For i = 0 To UBound(arrLines)
-        strLine = Trim(arrLines(i))
-        If InStr(1, strLine, "From:", vbTextCompare) = 1 Then
-            ExtractSenderFromEmail = Trim(Replace(strLine, "From:", ""))
-            Exit Function
-        End If
-    Next i
-End Function
