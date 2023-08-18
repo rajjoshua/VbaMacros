@@ -1,4 +1,4 @@
-Sub ExtractAndValidateApprovers()
+Sub ExtractDetailsFromEmailAndDocument()
 
     Dim OlMail As Outlook.MailItem
     Dim objAttachment As Outlook.Attachment
@@ -7,16 +7,15 @@ Sub ExtractAndValidateApprovers()
     Dim tbl As Object, row As Object
     Dim ApproversInWord As String, EmailSender As String
     Dim EmbeddedMail As Outlook.MailItem
-    Dim Lines() As String, Columns() As String
-    Dim i As Integer
 
+    ' Get the selected mail
     On Error Resume Next
     Set OlMail = Application.ActiveExplorer.Selection.Item(1)
 
     ' Extract Approvers from Word Attachment
     If Not OlMail Is Nothing Then
         For Each objAttachment In OlMail.Attachments
-            If Right(objAttachment.FileName, 4) = ".doc" Or Right(objAttachment.FileName, 5) = ".docx" Then
+            If InStr(objAttachment.FileName, ".doc") > 0 Then
                 ' Temporarily save the attachment
                 objAttachment.SaveAsFile Environ("Temp") & "\" & objAttachment.FileName
 
@@ -30,7 +29,7 @@ Sub ExtractAndValidateApprovers()
                 If WordDoc.Tables.Count >= 3 Then
                     Set tbl = WordDoc.Tables(3)
                     For Each row In tbl.Rows
-                        If row.Cells(5).Range.Text = "X" & vbCr Then
+                        If InStr(row.Cells(5).Range.Text, "X") > 0 Then
                             ApproversInWord = ApproversInWord & Trim(row.Cells(1).Range.Text) & vbNewLine
                         End If
                     Next row
@@ -44,31 +43,22 @@ Sub ExtractAndValidateApprovers()
         Next objAttachment
     End If
 
-    ' Assuming the email body represents the table row-by-row and columns are separated by tabs
-    Lines = Split(OlMail.Body, vbNewLine)
+    ' Show approver names from the Word document
+    If ApproversInWord <> "" Then
+        MsgBox "Approvers from Word Document:" & vbNewLine & ApproversInWord
+    End If
 
-    For i = LBound(Lines) To UBound(Lines)
-        Columns = Split(Lines(i), vbTab) ' Assuming columns are separated by tabs
-        
-        If UBound(Columns) = 4 Then ' 5 columns, index 0 to 4
-            ApproverInMail = Columns(0) ' First column for Approver Name
-
-            For Each objAttachment In OlMail.Attachments
-                If objAttachment.DisplayName = Columns(4) And objAttachment.Type = olEmbeddeditem Then ' Match attachment name with the fifth column
-                    ' Save and Open the embedded email
-                    objAttachment.SaveAsFile Environ("Temp") & "\embeddedMail.msg"
-                    Set EmbeddedMail = Application.CreateItemFromTemplate(Environ("Temp") & "\embeddedMail.msg")
-
-                    EmailSender = EmbeddedMail.SenderEmailAddress
-
-                    ' Validate sender of the embedded email against Approver name in GRID and Word document
-                    If InStr(ApproversInWord, ApproverInMail) > 0 And InStr(EmailSender, ApproverInMail) > 0 Then
-                        MsgBox "Valid Approver: " & ApproverInMail & " with email: " & EmailSender
-                    End If
-                End If
-            Next objAttachment
+    ' Loop through embedded email attachments and display sender addresses
+    For Each objAttachment In OlMail.Attachments
+        If objAttachment.Type = olEmbeddeditem Then
+            ' Save and Open the embedded email
+            objAttachment.SaveAsFile Environ("Temp") & "\embeddedMail.msg"
+            Set EmbeddedMail = Application.CreateItemFromTemplate(Environ("Temp") & "\embeddedMail.msg")
+            
+            EmailSender = EmbeddedMail.SenderEmailAddress
+            MsgBox "Sender Email Address: " & EmailSender
         End If
-    Next i
+    Next objAttachment
 
     Set OlMail = Nothing
     Set objAttachment = Nothing
