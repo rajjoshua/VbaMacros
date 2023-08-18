@@ -1,72 +1,57 @@
-Sub OpenAttachmentsAndFindApprovers()
+Sub ExtractApproversFromAttachment()
 
-'Declare variables
-Dim olApp As Outlook.Application
-Dim olMail As Outlook.MailItem
-Dim olAttachment As Outlook.Attachment
-Dim i As Long
-Dim strSenderName As String
-Dim strDocName As String
-Dim doc As Word.Document
-Dim table As Word.Table
-Dim row As Word.TableRow
-Dim cell As Word.TableCell
-Dim names As Variant
-Dim approvers As Variant
+    Dim OlMail As Outlook.MailItem
+    Dim objAttachment As Outlook.Attachment
+    Dim WordDoc As Object
+    Dim WordApp As Object
+    Dim tbl As Object
+    Dim row As Object
+    Dim Approvers As String
 
-'Get the Outlook application object
-Set olApp = Outlook.Application
+    On Error Resume Next
+    Set OlMail = Application.ActiveExplorer.Selection.Item(1)
 
-'Get the selected mail item
-Set olMail = olApp.ActiveExplorer.Selection.Item(1)
+    If Not OlMail Is Nothing Then
+        For Each objAttachment In OlMail.Attachments
+            If Right(objAttachment.FileName, 4) = ".doc" Or Right(objAttachment.FileName, 5) = ".docx" Then
+                ' Save the attachment temporarily
+                objAttachment.SaveAsFile Environ("Temp") & "\" & objAttachment.FileName
 
-'Loop through all the attachments
-For i = 1 To olMail.Attachments.Count
+                ' Check if Word is already running
+                Set WordApp = GetObject(, "Word.Application")
+                If WordApp Is Nothing Then Set WordApp = CreateObject("Word.Application")
 
-'Get the attachment object
-Set olAttachment = olMail.Attachments(i)
+                Set WordDoc = WordApp.Documents.Open(Environ("Temp") & "\" & objAttachment.FileName)
+                WordApp.Visible = False
 
-'Open the attachment
-olAttachment.Open
+                If WordDoc.Tables.Count >= 3 Then
+                    Set tbl = WordDoc.Tables(3)
+                    For Each row In tbl.Rows
+                        If row.Cells(5).Range.Text = "X" & vbCr Then
+                            Approvers = Approvers & row.Cells(1).Range.Text & vbNewLine
+                        End If
+                    Next row
+                End If
 
-'Get the document name
-strDocName = olAttachment.FileName
+                ' Close without saving and release objects
+                WordDoc.Close wdDoNotSaveChanges
+                Set WordDoc = Nothing
 
-'Open the document
-Set doc = Word.Documents.Open(strDocName)
+                ' Delete the temp file
+                Kill Environ("Temp") & "\" & objAttachment.FileName
+            End If
+        Next objAttachment
+    End If
 
-'Find the 3rd table
-Set table = doc.Tables(3)
+    If Approvers <> "" Then
+        MsgBox "List of Approvers:" & vbNewLine & Approvers, vbInformation, "Approvers"
+    Else
+        MsgBox "No Approvers found.", vbInformation, "No Approvers"
+    End If
 
-'Loop through all the rows
-For Each row In table.Rows
-
-'Check if the cell in the 5th column is marked as X
-If row.Cells(5).Value = "X" Then
-
-'Get the name in the first column
-names = row.Cells(1).Value
-
-'Add the name to the list of approvers
-If Not names Is Nothing Then
-approvers = approvers & "," & names
-End If
-
-End If
-
-Next row
-
-'Close the document
-doc.Close
-
-Next i
-
-'Check if the approvers list is not empty
-If approvers <> "" Then
-
-'Print the approver details in a message box
-MsgBox "The approvers are: " & approvers
-
-End If
+    Set OlMail = Nothing
+    Set objAttachment = Nothing
+    If Not WordApp Is Nothing Then WordApp.Quit
+    Set WordApp = Nothing
 
 End Sub
