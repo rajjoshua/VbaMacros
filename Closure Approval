@@ -136,14 +136,13 @@ Function ExtractName(fullName As String) As String
     End If
 End Function
 
-Function ExistsInCollection(col As Collection, key As Variant) As Boolean
-    Dim tempVar As Variant
-    On Error Resume Next
-    tempVar = col.Item(key)
-    If Err.Number = 0 Then
-        ExistsInCollection = True
-    Else
-        ExistsInCollection = False
-    End If
-    On Error GoTo 0
+Function ExistsInCollection(col As Collection, checkVal As String) As Boolean
+    Dim item As Variant
+    ExistsInCollection = False
+    For Each item In col
+        If LCase(item) = LCase(checkVal) Then
+            ExistsInCollection = True
+            Exit Function
+        End If
+    Next item
 End Function
