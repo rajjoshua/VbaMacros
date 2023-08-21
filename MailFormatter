@@ -1,0 +1,35 @@
+Sub FormatLinesInCurrentEmail()
+    Dim objMail As Object
+    Dim objWord As Word.Application
+    Dim objDoc As Word.Document
+    Dim objRange As Word.Range
+    Dim strLine As String
+
+    ' Check if there's an active inspector (i.e., an open email)
+    If Not Application.ActiveInspector Is Nothing Then
+        Set objMail = Application.ActiveInspector.CurrentItem
+
+        ' Check if it's a mail item
+        If objMail.Class = olMail Then
+            If objMail.GetInspector.EditorType = olEditorWord Then
+                Set objWord = objMail.GetInspector.WordEditor
+                Set objDoc = objWord.ActiveDocument
+
+                ' Go through each paragraph in the email
+                For Each objRange In objDoc.Paragraphs
+                    strLine = Trim(objRange.Range.Text)
+                    If Right(strLine, 1) = ":" Then
+                        objRange.Range.Bold = True
+                        objRange.Range.Underline = wdUnderlineSingle
+                    End If
+                Next objRange
+            End If
+        End If
+    End If
+
+    ' Clean up
+    Set objMail = Nothing
+    Set objWord = Nothing
+    Set objDoc = Nothing
+    Set objRange = Nothing
+End Sub
