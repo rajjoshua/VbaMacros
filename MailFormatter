@@ -1,35 +1,34 @@
-Sub FormatLinesInCurrentEmail()
+Sub FormatLinesInEmailBody()
+
     Dim objMail As Object
-    Dim objWord As Word.Application
-    Dim objDoc As Word.Document
-    Dim objRange As Word.Range
-    Dim strLine As String
-
-    ' Check if there's an active inspector (i.e., an open email)
-    If Not Application.ActiveInspector Is Nothing Then
-        Set objMail = Application.ActiveInspector.CurrentItem
-
-        ' Check if it's a mail item
-        If objMail.Class = olMail Then
-            If objMail.GetInspector.EditorType = olEditorWord Then
-                Set objWord = objMail.GetInspector.WordEditor
-                Set objDoc = objWord.ActiveDocument
-
-                ' Go through each paragraph in the email
-                For Each objRange In objDoc.Paragraphs
-                    strLine = Trim(objRange.Range.Text)
-                    If Right(strLine, 1) = ":" Then
-                        objRange.Range.Bold = True
-                        objRange.Range.Underline = wdUnderlineSingle
-                    End If
-                Next objRange
+    Dim bodyLines As Variant
+    Dim i As Long
+    Dim newBody As String
+    
+    ' Ensure the active item is a mail
+    On Error Resume Next
+    Set objMail = Application.ActiveInspector.CurrentItem
+    On Error GoTo 0
+    
+    If Not objMail Is Nothing Then
+        bodyLines = Split(objMail.Body, vbCrLf)
+        
+        ' Iterate through each line of the email body
+        For i = LBound(bodyLines) To UBound(bodyLines)
+            ' Check if line ends with colon
+            If Right(Trim(bodyLines(i)), 1) = ":" Then
+                ' Add bold and underline using RTF codes
+                bodyLines(i) = "{\b\ul " & bodyLines(i) & "}"
             End If
-        End If
+            newBody = newBody & bodyLines(i) & vbCrLf
+        Next i
+        
+        ' Update the mail body
+        objMail.Body = newBody
+        objMail.Save
+        
+    Else
+        MsgBox "Please ensure you have an email opened in edit mode."
     End If
 
-    ' Clean up
-    Set objMail = Nothing
-    Set objWord = Nothing
-    Set objDoc = Nothing
-    Set objRange = Nothing
 End Sub
