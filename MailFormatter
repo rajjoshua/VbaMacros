@@ -1,9 +1,10 @@
-Sub PrefixLinesInEmailBody()
+Sub PrefixAndAddLineInEmailBody()
 
     Dim objMail As Object
     Dim bodyLines As Variant
     Dim i As Long
     Dim newBody As String
+    Dim eqLine As String
     
     ' Ensure the active item is a mail
     On Error Resume Next
@@ -19,8 +20,15 @@ Sub PrefixLinesInEmailBody()
             If Right(Trim(bodyLines(i)), 1) = ":" Then
                 ' Prefix with an asterisk
                 bodyLines(i) = "* " & bodyLines(i)
+                
+                ' Create a line of "=" matching the length of the current line
+                eqLine = String(Len(bodyLines(i)), "=")
+                
+                ' Add the "=" line to the new body text
+                newBody = newBody & bodyLines(i) & vbCrLf & eqLine & vbCrLf
+            Else
+                newBody = newBody & bodyLines(i) & vbCrLf
             End If
-            newBody = newBody & bodyLines(i) & vbCrLf
         Next i
         
         ' Update the mail body
