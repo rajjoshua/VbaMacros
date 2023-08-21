@@ -1,4 +1,4 @@
-Sub FormatLinesInEmailBody()
+Sub PrefixLinesInEmailBody()
 
     Dim objMail As Object
     Dim bodyLines As Variant
@@ -17,8 +17,8 @@ Sub FormatLinesInEmailBody()
         For i = LBound(bodyLines) To UBound(bodyLines)
             ' Check if line ends with colon
             If Right(Trim(bodyLines(i)), 1) = ":" Then
-                ' Add bold and underline using RTF codes
-                bodyLines(i) = "{\b\ul " & bodyLines(i) & "}"
+                ' Prefix with an asterisk
+                bodyLines(i) = "* " & bodyLines(i)
             End If
             newBody = newBody & bodyLines(i) & vbCrLf
         Next i
