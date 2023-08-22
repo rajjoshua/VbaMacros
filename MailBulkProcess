@@ -1,1 +1,123 @@
+Sub BatchExtractAndValidateApprovers()
+
+    Dim mailFolderPath As String
+    Dim mailFile As String
+    Dim olApp As Outlook.Application
+    Dim OlMail As Outlook.MailItem
+    
+    ' Allow user to select the folder containing the emails
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .Title = "Select Folder containing email files"
+        .AllowMultiSelect = False
+        If .Show = -1 Then
+            mailFolderPath = .SelectedItems(1)
+        Else
+            MsgBox "No folder was selected!"
+            Exit Sub
+        End If
+    End With
+
+    ' Check if path ends with \
+    If Right(mailFolderPath, 1) <> "\" Then mailFolderPath = mailFolderPath & "\"
+
+    ' Loop through each email in the folder
+    Set olApp = New Outlook.Application
+    mailFile = Dir(mailFolderPath & "*.msg")
+    Do While mailFile <> ""
+        Set OlMail = olApp.CreateItemFromTemplate(mailFolderPath & mailFile)
+        
+        ' Call the main function to process the email
+        ProcessEmail OlMail
+
+        mailFile = Dir
+    Loop
+
+    Set OlMail = Nothing
+    Set olApp = Nothing
+
+End Sub
+
+Sub ProcessEmail(OlMail As Outlook.MailItem)
+    ' This is the previous function ExtractAndValidateApprovers
+
+    Dim objAttachment As Outlook.Attachment
+    Dim WordDoc As Object
+    Dim WordApp As Object
+    Dim tbl As Object, row As Object
+    Dim ApproversInWord As Collection
+    Dim ApproversInMail As Collection
+    Dim EmbeddedMail As Outlook.MailItem
+    Dim FirstLines As String
+    Dim LineArray() As String
+    Dim MismatchedNames As String
+
+    ' Initialize collections
+    Set ApproversInWord = New Collection
+    Set ApproversInMail = New Collection
+
+    ' Extract Approvers from Word Attachment
+    If Not OlMail Is Nothing Then
+        For Each objAttachment In OlMail.Attachments
+            If InStr(objAttachment.FileName, ".doc") > 0 Then
+                ' Temporarily save the attachment
+                objAttachment.SaveAsFile Environ("Temp") & "\" & objAttachment.FileName
+
+                ' Open the Word document
+                Set WordApp = GetObject(, "Word.Application")
+                If WordApp Is Nothing Then Set WordApp = CreateObject("Word.Application")
+
+                Set WordDoc = WordApp.Documents.Open(Environ("Temp") & "\" & objAttachment.FileName)
+                WordApp.Visible = False
+
+                If WordDoc.Tables.Count >= 3 Then
+                    Set tbl = WordDoc.Tables(3)
+                    For Each row In tbl.Rows
+                        If InStr(row.Cells(5).Range.Text, "X") > 0 Then
+                            ApproversInWord.Add ExtractName(Trim(row.Cells(1).Range.Text))
+                        End If
+                    Next row
+                End If
+
+                ' Close without saving
+                WordDoc.Close wdDoNotSaveChanges
+                ' Delete the temp file
+                Kill Environ("Temp") & "\" & objAttachment.FileName
+            End If
+        Next objAttachment
+    End If
+
+    ' ... (remaining part of your function)
+
+End Sub
+
+Function ExtractName(fullName As String) As String
+    Dim regEx As Object
+    Dim matches As Object
+    
+    Set regEx = CreateObject("VBScript.RegExp")
+    With regEx
+        .Global = False
+        .MultiLine = True
+        .IgnoreCase = True
+        .Pattern = "^[A-Z,]+"
+    End With
+    
+    Set matches = regEx.Execute(fullName)
+    If matches.Count > 0 Then
+        ExtractName = matches(0).Value
+    Else
+        ExtractName = ""
+    End If
+End Function
+
+Function ExistsInCollection(col As Collection, checkVal As String) As Boolean
+    Dim item As Variant
+    ExistsInCollection = False
+    For Each item In col
+        If LCase(item) = LCase(checkVal) Then
+            ExistsInCollection = True
+            Exit Function
+        End If
+    Next item
+End Function
 
