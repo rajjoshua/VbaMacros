@@ -1,0 +1,17 @@
+Sub OpenAndWriteExcelFile()
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    
+    ' Open the existing Excel workbook
+    Set wb = Workbooks.Open("C:\path\to\your\file.xlsx")
+    
+    ' Choose the worksheet to write data into
+    Set ws = wb.Sheets("Sheet1")
+    
+    ' Write data into cell A1
+    ws.Range("A1").Value = "Hello, World!"
+    
+    ' Save the changes and close the workbook
+    wb.Save
+    wb.Close
+End Sub
