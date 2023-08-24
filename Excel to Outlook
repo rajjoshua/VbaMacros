@@ -1,0 +1,51 @@
+Sub CreateEmailWithExcelData()
+    Dim OutlookMail As Object
+    Dim ExcelApp As Object
+    Dim ws As Object
+    Dim cell As Object
+    Dim bodyHTML As String, rowHTML As String
+    Dim i As Long, j As Long
+    Dim LastRow As Long, LastCol As Long
+    
+    ' Initialize Excel
+    Set ExcelApp = CreateObject("Excel.Application")
+    Set ws = ExcelApp.Workbooks.Open("C:\path\to\excel\file.xlsx").Worksheets(1)
+    ExcelApp.Visible = False
+    
+    ' Initialize Outlook
+    Set OutlookMail = CreateObject("Outlook.Application").CreateItem(0)
+    
+    ' Find last row and column
+    LastRow = ws.Cells(ws.Rows.Count, 1).End(-4162).Row ' -4162 corresponds to xlUp
+    LastCol = ws.Cells(1, ws.Columns.Count).End(-4159).Column ' -4159 corresponds to xlToLeft
+    
+    ' Create HTML table from Excel
+    bodyHTML = "<HTML><BODY><TABLE>"
+    
+    For i = 1 To LastRow
+        rowHTML = "<TR>"
+        For j = 1 To LastCol
+            Set cell = ws.Cells(i, j)
+            rowHTML = rowHTML & "<TD>" & cell.Value & "</TD>"
+        Next j
+        rowHTML = rowHTML & "</TR>"
+        bodyHTML = bodyHTML & rowHTML
+    Next i
+    
+    bodyHTML = bodyHTML & "</TABLE></BODY></HTML>"
+    
+    ' Setup email
+    With OutlookMail
+        .To = "recipient@example.com"
+        .Subject = "Excel Data"
+        .HTMLBody = bodyHTML
+        .Display
+    End With
+    
+    ' Cleanup
+    ws.Parent.Close False
+    Set cell = Nothing
+    Set ws = Nothing
+    Set ExcelApp = Nothing
+    Set OutlookMail = Nothing
+End Sub
