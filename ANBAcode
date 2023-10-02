@@ -1,0 +1,57 @@
+
+Sub CompareFilesDynamic()
+    Dim ws1 As Worksheet, ws2 As Worksheet
+    Dim lastRow1 As Long, lastRow2 As Long
+    Dim portfolioIndex As Integer
+    Dim portfolioDict As Object
+    Dim cell As Range
+   
+    ' Set the worksheets to be compared
+    Set ws1 = ThisWorkbook.Sheets("query71")
+    Set ws2 = Workbooks("File2.xlsx").Sheets("query71") ' Change the filename as needed
+   
+    ' Find the last rows in both worksheets
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
+   
+    ' Create a dictionary to store portfolio IDs from File2
+    Set portfolioDict = CreateObject("Scripting.Dictionary")
+   
+    ' Find the column index of "Portfolio ID" in File1 and store column names in an array
+    Dim headers1() As Variant
+    Dim colCount1 As Integer
+    colCount1 = ws1.Cells(1, ws1.Columns.Count).End(xlToLeft).Column
+    ReDim headers1(1 To colCount1)
+   
+    For i = 1 To colCount1
+        headers1(i) = ws1.Cells(1, i).Value
+    Next i
+   
+    ' Find the column index of "Portfolio ID" in File2
+    portfolioIndex = WorksheetFunction.Match("Portfolio ID", ws2.Rows(1), 0)
+   
+    ' Loop through File2 and populate the dictionary
+    For Each cell In ws2.Range(ws2.Cells(2, portfolioIndex), ws2.Cells(lastRow2, portfolioIndex))
+        If cell.Value <> "" And cell.Offset(0, -portfolioIndex + 1).Value <> "Omana" Then
+            portfolioDict(cell.Value) = cell.Row
+        End If
+    Next cell
+   
+    ' Loop through File1 headers and compare with File2
+    For i = 1 To colCount1
+        If portfolioDict.Exists(headers1(i)) Then
+            ' Header found in File2, compare the data in both files
+            For j = 2 To lastRow1
+                If ws1.Cells(j, i).Value <> ws2.Cells(portfolioDict(headers1(i)), portfolioIndex + i - 1).Value Then
+                    ' Values are different, highlight in red
+                    ws1.Cells(j, i).Interior.Color = RGB(255, 0, 0)
+                End If
+            Next j
+        End If
+    Next i
+   
+    ' Clean up
+    Set portfolioDict = Nothing
+    Set ws1 = Nothing
+    Set ws2 = Nothing
+End Sub
