@@ -1,0 +1,22 @@
+import pandas as pd
+from transformers import pipeline
+
+# Load the Excel file into a DataFrame
+df = pd.read_excel('your_file.xlsx')
+
+# Convert the DataFrame to a text string for the NLP model
+context = df.to_string()
+
+# Load a pre-trained question-answering model
+qa_pipeline = pipeline("question-answering")
+
+# Function to ask a question and get an answer
+def ask_question(question):
+    result = qa_pipeline(question=question, context=context)
+    return result['answer']
+
+# Example usage
+question = "What is the total revenue for Q1?"
+answer = ask_question(question)
+print(f"Question: {question}")
+print(f"Answer: {answer}")
