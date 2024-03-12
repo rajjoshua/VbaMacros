@@ -1,0 +1,28 @@
+from transformers import pipeline
+from docx import Document
+
+# Load a pre-trained model and tokenizer
+nlp = pipeline("question-answering")
+
+# Function to read the document
+def read_document(file_path):
+    doc = Document(file_path)
+    full_text = []
+    for para in doc.paragraphs:
+        full_text.append(para.text)
+    return '\\n'.join(full_text)
+
+# Function to ask a question
+def ask_question(context, question):
+    result = nlp(question=question, context=context)
+    return result['answer']
+
+# Replace 'your_document.docx' with the path to your document
+document_path = 'your_document.docx'
+document_text = read_document(document_path)
+
+# Example question
+question = "What is the main topic of the document?"
+answer = ask_question(document_text, question)
+print(f"Question: {question}")
+print(f"Answer: {answer}")
