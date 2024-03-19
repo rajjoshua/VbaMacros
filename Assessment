@@ -1,0 +1,14 @@
+Subject: Reminder: Identify Automation Opportunities before UAT
+Hi team,
+This is a friendly reminder to reach out to the automation team before commencing any User Acceptance Testing (UAT). By collaborating early, we can:
+ * Identify potential test cases for automation: The automation team can assess your test cases and determine if they can be automated, saving time and resources during future UAT cycles.
+ * Improve overall test coverage: By combining manual and automated testing, we can ensure comprehensive test coverage and identify any gaps in our testing strategy.
+Please connect with the automation team as soon as you receive confirmation for a UAT cycle and provide the following information to help them assess automation feasibility:
+ * Nature of testing: UI or data testing?
+ * Data extraction method: Extracted data in Excel or direct DB connection?
+ * Existing automation tool (if any):  If you're aware of a relevant tool, please mention the name.
+ * Complexity assessment: If you believe manual testing is sufficient due to low complexity, please explain your reasoning.
+ * Highly complex scenarios: If you encounter a scenario that seems highly complex and lacks existing automation tools, please request an immediate meeting with the automation team well ahead of UAT.
+Thank you for your cooperation!
+Best regards,
+[Your Name]
