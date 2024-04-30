@@ -1,0 +1,21 @@
+Sub PerformVLookup()
+    Dim lookupValue As Variant
+    Dim tableArray As Range
+    Dim colIndexNum As Integer
+    Dim exactMatch As Boolean
+    Dim result As Variant
+    Dim lastRow As Long
+    Dim i As Long
+
+    colIndexNum = 2
+    exactMatch = False
+
+    lastRow = Cells(Rows.Count, "H").End(xlUp).Row
+    Set tableArray = Range("A:C")
+
+    For i = 5 To lastRow
+        lookupValue = Cells(i, "H").Value
+        result = Application.WorksheetFunction.VLookup(lookupValue, tableArray, colIndexNum, exactMatch)
+        Cells(i, "I").Value = result
+    Next i
+End Sub
