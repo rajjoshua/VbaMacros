@@ -1,0 +1,52 @@
+Sure, here's the complete user manual incorporating all the details:
+
+---
+
+**User Manual: Excel VBA Macro Tool for Comparing Excel Sheets**
+
+**1. Introduction**
+- **Purpose of the Tool**: This tool is designed to compare two Excel sheets based on a primary key and mapped columns to identify discrepancies or differences. It is intended for users who need to verify data consistency across reports or datasets.
+- **Intended Users**: This manual is intended for business analysts, data auditors, and anyone who works with large datasets in Excel and requires a tool to facilitate accurate data comparison.
+
+**2. Installation and Setup**
+- **System Requirements**: Microsoft Excel 2010 or later.
+- **Installation Instructions**: 
+   - Ensure that macros are enabled in Excel (File > Options > Trust Center > Trust Center Settings > Macro Settings > Enable all macros).
+   - Download the macro-enabled workbook from [insert download link or location].
+   - Open the workbook. A security warning may appear; click 'Enable Content' to proceed.
+
+**3. User Interface**
+- **Main Interface**: The tool is accessed via a custom tab on the Excel Ribbon named "Data Compare".
+- **Controls**:
+   - **Load Sheet 1**: Browse button to select the first Excel file for comparison.
+   - **Load Sheet 2**: Browse button to select the second Excel file for comparison.
+   - **Set Output Path**: Browse button to select the directory where the comparison results will be saved.
+   - **Output File Name**: Text box where you can enter the name for the output file that will contain the comparison results.
+   - **Set Primary Key**: Dropdown to select the column used as the primary key for comparison.
+   - **Map Columns**: Button to open the mapping interface where you can link columns from Sheet 1 to corresponding columns in Sheet 2.
+   - **Run Comparison**: Button to start the comparison process.
+   - **Export Results**: Button to save the comparison results to the specified output path with the entered file name.
+
+**4. How to Use the Tool**
+- **Preparing the Excel Files**: Ensure that each Excel file has the data formatted correctly, with headers in the first row and consistent data types in each column.
+- **Mapping the Columns**:
+   - Click 'Map Columns'.
+   - Use the interface to select corresponding columns in Sheet 1 and Sheet 2 that you wish to compare. This is done by selecting a column in Sheet 1 from a dropdown and then selecting a related column in Sheet 2 from an adjacent dropdown.
+- **Running the Comparison**:
+   - Ensure both Excel files are loaded and columns are appropriately mapped.
+   - Click 'Run Comparison'. The tool will process the files based on the primary key and mapped columns and highlight discrepancies in the data.
+- **Viewing and Exporting Results**:
+   - Once the comparison is complete, review the discrepancies highlighted.
+   - Use the 'Export Results' button to save the comparison outcome to the desired location with the specified file name.
+
+**5. Troubleshooting**
+- **Common Issues and Solutions**:
+   - *Macro not running*: Check to ensure macros are enabled in Excel settings.
+   - *Incorrect comparisons*: Verify that the correct primary key and column mappings are set before running the comparison.
+
+**6. Contact Information**
+- For further assistance or to report issues, please contact [insert contact information].
+
+---
+
+Let me know if you need any further details added or any section expanded!
