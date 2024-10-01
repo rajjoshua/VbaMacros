@@ -1,1 +1,93 @@
-In the first half of this year, I have undertaken and successfully completed several complex back-end projects, demonstrating my technical expertise and leadership skills. My primary achievements include the ISO Migration projects for CPB and ICG markets, as well as the EAP Cards Monitoring UAT project.Key Achievements:ISO Migration for CPB:Successfully managed and completed the ISO Migration project for CPB.Implemented intricate data transformation validations.Demonstrated a thorough understanding of complex data structures and transformation rules.ISO Migration for ICG Markets:Led the ISO Migration project for ICG markets, utilizing EAP Big Data Hive.Developed and executed seven complex SQL queries to validate advanced data enrichment rules.Ensured high data integrity and accuracy through meticulous validation processes.EAP Cards Monitoring UAT:Played a pivotal role in the EAP Cards Monitoring UAT project.Addressed two complex rule logics and two red flags within a constrained timeline.Conducted extensive analysis and requirement gathering to deliver solutions that met stringent quality standards.Skills and Competencies:Proficient in handling complex data transformation and validation tasks.Strong expertise in SQL and Big Data technologies.Exceptional problem-solving abilities, particularly in high-pressure situations.Effective project management and leadership skills, ensuring timely and quality delivery.Conclusion:The first half of the year has been marked by significant accomplishments in high-stakes projects. My ability to navigate and resolve complex technical challenges, coupled with my leadership in driving projects to successful completion, underscores my value to the team and the organization. I look forward to continuing to contribute to our collective success in the coming months.
+Here's the full Year-End Appraisal Report:
+
+Year-End Appraisal Report
+
+Overview
+
+This year has been marked by significant accomplishments, showcasing my technical expertise, leadership skills, and ability to navigate complex challenges. Despite obstacles, I ensured timely and quality delivery, demonstrating exceptional value to the team and organization.
+
+Key Achievements
+
+_ISO Migration for CPB_
+
+Background: CPB's ISO migration relied heavily on intricate VBA macros for data validation, requiring meticulous attention to detail.
+
+Challenges:
+
+1. Complex data validation rules
+2. Macro performance optimization
+3. Error handling and debugging
+
+Solutions:
+
+1. Designed and implemented efficient VBA macros to handle complex validation rules, leveraging expertise in data manipulation.
+2. Optimized macro performance through code refactoring, loop optimization, and efficient data processing.
+3. Implemented robust error handling and debugging mechanisms to ensure data integrity and minimize errors.
+
+Impact: Successfully migrated CPB's ISO processes, ensuring data accuracy, compliance, and streamlined operations.
+
+_ISO Migration for ICG Markets_
+
+Background: ICG Markets' ISO migration required complex data enrichment using BIG Data, demanding expertise in data analysis and query optimization.
+
+Challenges:
+
+1. Developing complex SQL queries for data validation
+2. Handling large data volumes and performance optimization
+3. Ensuring data quality and integrity
+
+Solutions:
+
+1. Created and executed complex SQL queries to validate data enrichment rules, leveraging knowledge of data modeling.
+2. Optimized query performance using indexing, partitioning, and query optimization techniques.
+3. Implemented data quality checks and validation processes to ensure accuracy and consistency.
+
+Impact: Successfully migrated ICG Markets' ISO processes, enhancing data quality, compliance, and business intelligence.
+
+_EAP Cards Monitoring UAT_
+
+Background: EAP Cards Monitoring required thorough UAT to ensure compliance, involving rigorous testing and analysis.
+
+Challenges:
+
+1. Complex rule logics and red flags
+2. Constrained timeline
+3. Stringent quality standards
+
+Solutions:
+
+1. Conducted extensive analysis and requirement gathering to identify critical testing areas.
+2. Addressed critical issues through targeted solutions, collaborating with stakeholders.
+3. Ensured seamless delivery through effective project management.
+
+Impact: Successfully completed EAP Cards Monitoring UAT, ensuring compliance, quality, and risk mitigation.
+
+_Next-Gen Release Testing (UI-Based UAT)_
+
+Background: Returned to lead UI-Based UAT project after 4 years, requiring significant team management and stakeholder engagement.
+
+Challenges:
+
+1. Re-familiarization with legacy system
+2. Managing cross-functional teams (BA, Tech, AML Investigation)
+3. Stakeholder expectations and communication
+
+Solutions:
+
+1. Quickly re-acclimated to the system, identifying key testing areas and potential risks.
+2. Coordinated with BA, Tech, and AML Investigation teams to ensure comprehensive testing.
+3. Fostered open communication with stakeholders, ensuring transparency, timely delivery, and issue resolution.
+
+Impact: Successfully delivered Next-Gen Release Testing, ensuring system quality, stakeholder satisfaction, and enhanced user experience.
+
+Skills and Competencies Demonstrated
+
+- Technical expertise: VBA, SQL, BIG Data, complex data validation, UI-Based testing
+- Problem-solving: Resolved critical technical issues under pressure
+- Leadership: Effective team management and stakeholder engagement
+- Collaboration: Worked closely with cross-functional teams
+- Communication: Ensured transparent and timely stakeholder updates
+
+Conclusion
+
+This year, I deliberately sought out diverse challenges, expanding my expertise across all areas of AML UAT, including Monitoring (EAP Cards) and Investigation (Next-Gen Release Testing). Through these experiences, I demonstrated versatility, technical expertise, and leadership skills, driving high-impact projects and ensuring compliance, quality, and stakeholder satisfaction. Notably, my work in Next-Gen Release Testing showcased my ability to manage cross-functional teams and stakeholders, while re-acclimating to legacy systems. I'm proud of my accomplishments and look forward to continued growth, leveraging my comprehensive AML UAT expertise to drive future successes.
