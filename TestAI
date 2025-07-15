@@ -1,0 +1,75 @@
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import pandas as pd
+import vertexai  # Ensure this is installed in your environment
+from google.oauth2.credentials import Credentials
+from COIN.Dhamu import get_h2m_token
+from vertexai.generative_models import GenerativeModel
+
+# Class definition for Vertex AI
+class VertexGenAI:
+    def __init__(self):
+        h2m_token = get_h2m_token()
+        credentials = Credentials(h2m_token)
+        vertexai.init(
+            project="prj-gen-ai-9571",
+            api_transport="rest",
+            api_endpoint="https://r2d2-c3p0-icq-msst-genaih-178909.apps.namicg39023u.ecs.dyn.nsroot.net/vertex",
+            credentials=credentials,
+        )
+        self.metadata = [("x-r2d2-user", "qwervr")]
+
+    def generate_gemini_content(self, question):
+        model = GenerativeModel("gemini-1.5-pro-002")
+        resp = model.generate_content(
+            question,
+            metadata=self.metadata,
+        )
+        return resp
+
+# GUI Application Class
+class ExcelChatApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Excel Chat Application")
+
+        self.vertex_gen_ai = VertexGenAI()
+        self.dataframe = None
+
+        self.label = tk.Label(master, text="Select an Excel File:")
+        self.label.pack()
+
+        self.select_button = tk.Button(master, text="Browse", command=self.load_excel)
+        self.select_button.pack()
+
+        self.question_entry = tk.Entry(master, width=50)
+        self.question_entry.pack()
+        self.question_entry.insert(0, "Ask a question about the data...")
+
+        self.ask_button = tk.Button(master, text="Ask", command=self.ask_question)
+        self.ask_button.pack()
+
+        self.response_label = tk.Label(master, text="", wraplength=500)
+        self.response_label.pack()
+
+    def load_excel(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx;*.xls")])
+        if file_path:
+            self.dataframe = pd.read_excel(file_path)
+            messagebox.showinfo("File Loaded", f"Loaded data from {file_path}")
+
+    def ask_question(self):
+        question = self.question_entry.get()
+        if self.dataframe is not None:
+            # Here you can potentially analyze the dataframe based on the question
+            # or even pass data details to the AI.
+            answer = self.vertex_gen_ai.generate_gemini_content(question)
+            self.response_label.config(text=answer)
+        else:
+            messagebox.showwarning("No Data", "Please load an Excel file first.")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ExcelChatApp(root)
+    root.mainloop()
