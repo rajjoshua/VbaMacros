@@ -436,6 +436,16 @@
             color: #333333;
         }
 
+        .newsletter-device-frame.view-desktop {
+            max-width: 600px !important;
+        }
+        .newsletter-device-frame.view-tablet {
+            max-width: 480px !important;
+        }
+        .newsletter-device-frame.view-mobile {
+            max-width: 360px !important;
+        }
+
         /* DYNAMIC PAGE BACKGROUND LAYERING */
         .newsletter-page-sheet {
             min-height: 780px;
@@ -655,6 +665,11 @@
             font-family: var(--font-ui);
         }
 
+        .form-select option {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+        }
+
         .form-select:focus, .form-input:focus {
             border-color: #3b82f6;
         }
@@ -721,35 +736,46 @@
         /* TEXT FORMAT POPUP TOOLBAR */
         .text-format-toolbar {
             position: absolute;
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 4px;
-            box-shadow: var(--shadow-lg);
+            background: rgba(11, 15, 25, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 6px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(99, 102, 241, 0.2);
             display: flex;
-            gap: 2px;
+            gap: 4px;
             z-index: 999;
             visibility: hidden;
             opacity: 0;
-            transition: opacity 0.15s ease-out;
+            transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+            transform: scale(0.95) translateY(5px);
+        }
+        
+        .text-format-toolbar.active {
+            visibility: visible;
+            opacity: 1;
+            transform: scale(1) translateY(0);
         }
 
         .text-format-btn {
             background: none;
             border: none;
             color: var(--text-main);
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
-            display: flex;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: var(--transition);
         }
 
         .text-format-btn:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-            color: #60a5fa;
+            background: rgba(99, 102, 241, 0.2);
+            color: white;
         }
 
         /* MODALS Overlay */
@@ -912,6 +938,57 @@
             margin: 4px 0;
             border-radius: 2px;
             display: none;
+        }
+
+        /* Resizable image styling */
+        .image-resize-handle {
+            position: absolute;
+            right: -4px;
+            bottom: -4px;
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            cursor: se-resize;
+            border-radius: 50%;
+            border: 2px solid white;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .resizable-image-wrapper:hover .image-resize-handle,
+        div[data-action="canvas-upload"]:hover .image-resize-handle,
+        .newsletter-block-wrapper.selected .image-resize-handle {
+            opacity: 1 !important;
+        }
+
+        .resizable-image-wrapper:hover .hover-upload-overlay,
+        .gallery-image-wrapper:hover .hover-upload-overlay,
+        .awards-photo-wrapper:hover .hover-upload-overlay,
+        div[data-action="canvas-upload"]:hover .hover-upload-overlay,
+        div[data-action="gallery-item-upload"]:hover .hover-upload-overlay,
+        div[data-action="awards-item-upload"]:hover .hover-upload-overlay {
+            opacity: 1 !important;
+        }
+
+        /* Hide handles on export */
+        body.rendering-pdf .image-resize-handle {
+            display: none !important;
+        }
+
+        .draggable-free-element {
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .draggable-free-element:active {
+            cursor: grabbing;
+        }
+
+        .gallery-item-free-wrapper:hover .image-resize-handle {
+            opacity: 1 !important;
         }
 
         /* ═══════════════════════════════════════════════════════
@@ -1297,6 +1374,7 @@
             <div class="preset-dot" title="Sunset Glow" style="background-color: #E11D48;" data-preset="sunset"></div>
             <div class="preset-dot" title="Tech Minimalist" style="background-color: #1F2937;" data-preset="minimal"></div>
             <div class="preset-dot" title="Sweet Berry" style="background-color: #DB2777;" data-preset="berry"></div>
+            <div class="preset-dot" title="Custom Brand Theme" style="background: linear-gradient(135deg, red, orange, yellow, green, blue, purple);" data-preset="custom"></div>
         </div>
 
         <div class="header-actions">
@@ -1324,14 +1402,18 @@
                 <button class="tab-btn active" data-tab="tab-pages">Pages</button>
                 <button class="tab-btn" data-tab="tab-library">Blocks</button>
                 <button class="tab-btn" data-tab="tab-global-styling">Design</button>
+                <button class="tab-btn" data-tab="tab-history">History</button>
                 <button class="tab-btn" data-tab="tab-audit">Audit</button>
             </div>
 
             <!-- TAB: PAGES -->
             <div class="tab-content active" id="tab-pages">
-                <h3 class="section-title">
-                    Newsletter Pages
-                    <button class="btn" style="padding: 4px 8px; font-size:11px;" id="btn-add-page">+ Add Page</button>
+                <h3 class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Pages</span>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn btn-mini" style="padding: 4px 8px; font-size:11px; background:rgba(255,255,255,0.05);" id="btn-manage-pages" title="Open Page Manager Overview">Grid</button>
+                        <button class="btn btn-accent btn-mini" style="padding: 4px 8px; font-size:11px;" id="btn-add-page">+ Add</button>
+                    </div>
                 </h3>
                 <div id="pages-list-container">
                     <!-- Dynamically Loaded -->
@@ -1381,6 +1463,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
                         <span>Team Footer</span>
                     </div>
+                    <div class="block-item" data-type="freeform">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        <span>Free Text & Image</span>
+                    </div>
                 </div>
             </div>
 
@@ -1403,6 +1489,44 @@
                         <span class="slider-val-label" id="val-global-scale">1.0x</span>
                     </div>
                 </div>
+                
+                <div class="form-group" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <label class="form-label" style="font-weight: 700;">Custom Brand Theme</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 10px;">Primary Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" class="color-picker-input" id="inp-custom-primary" value="#003B70">
+                                <input type="text" class="form-input form-input-color-hex" id="inp-custom-primary-text" value="#003B70" style="font-size: 11px; padding: 4px;">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px;">Accent Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" class="color-picker-input" id="inp-custom-accent" value="#D92626">
+                                <input type="text" class="form-input form-input-color-hex" id="inp-custom-accent-text" value="#D92626" style="font-size: 11px; padding: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 10px;">Card Background</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" class="color-picker-input" id="inp-custom-card" value="#F4F6F9">
+                                <input type="text" class="form-input form-input-color-hex" id="inp-custom-card-text" value="#F4F6F9" style="font-size: 11px; padding: 4px;">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px;">Text Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" class="color-picker-input" id="inp-custom-text" value="#333333">
+                                <input type="text" class="form-input form-input-color-hex" id="inp-custom-text-text" value="#333333" style="font-size: 11px; padding: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-accent" style="width: 100%; justify-content: center; margin-top: 12px;" id="btn-apply-custom-theme">Apply Brand Colors</button>
+                </div>
+
                 <div style="font-size: 11px; color: var(--text-muted); background-color: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; margin-top:20px; border: 1px solid var(--border-color);">
                     <strong>Typography Presets:</strong> Changing Font Pairings will update fonts across your entire document and auto-compile them into inline styles during exports.
                 </div>
@@ -1416,6 +1540,17 @@
                     <!-- Dynamic Checklist -->
                 </div>
             </div>
+
+            <!-- TAB: HISTORY -->
+            <div class="tab-content" id="tab-history">
+                <h3 class="section-title">
+                    Revisions
+                    <button class="btn" style="padding: 4px 8px; font-size:10px;" id="btn-create-snapshot">+ Save Snapshot</button>
+                </h3>
+                <div id="revisions-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Dynamically Loaded -->
+                </div>
+            </div>
         </div>
 
         <!-- CANVAS AREA (CENTER) -->
@@ -1423,6 +1558,11 @@
             <div class="canvas-toolbar no-print">
                 <div class="page-tabs-bar" id="page-tabs-container">
                     <!-- Dynamic Tabs -->
+                </div>
+                <div class="preview-mode-toggles" style="display: flex; gap: 4px; background: rgba(255,255,255,0.05); padding: 2px; border-radius: 6px; border: 1px solid var(--border-color); margin-left: auto; margin-right: 12px;">
+                    <button class="btn btn-mini preview-toggle-btn active" data-mode="desktop" style="padding: 4px 8px; font-size: 10px;" title="Desktop View (600px width)">Desktop</button>
+                    <button class="btn btn-mini preview-toggle-btn" data-mode="tablet" style="padding: 4px 8px; font-size: 10px;" title="Tablet View (480px width)">Tablet</button>
+                    <button class="btn btn-mini preview-toggle-btn" data-mode="mobile" style="padding: 4px 8px; font-size: 10px;" title="Mobile View (360px width)">Mobile</button>
                 </div>
                 <div style="font-size: 12px; color: var(--text-muted); display:flex; align-items:center; gap:6px;">
                     <span id="save-status">Saved</span>
@@ -1439,10 +1579,11 @@
 
             <!-- Text selection popup toolbar -->
             <div class="text-format-toolbar" id="text-format-toolbar">
-                <button class="text-format-btn" data-command="bold"><b>B</b></button>
-                <button class="text-format-btn" data-command="italic"><i>I</i></button>
-                <button class="text-format-btn" data-command="underline"><u>U</u></button>
-                <button class="text-format-btn" data-command="createLink">Link</button>
+                <button class="text-format-btn" data-command="bold" title="Bold"><b>B</b></button>
+                <button class="text-format-btn" data-command="italic" title="Italic"><i>I</i></button>
+                <button class="text-format-btn" data-command="underline" title="Underline"><u>U</u></button>
+                <button class="text-format-btn" data-command="createLink" title="Link">Link</button>
+                <button class="text-format-btn" data-command="insertUnorderedList" title="Bullet List">• List</button>
             </div>
         </div>
 
@@ -1490,6 +1631,14 @@
                         <input type="text" class="form-input" id="inp-wizard-name" value="My Team Monthly Newsletter" placeholder="Enter Project Name">
                     </div>
                     <div class="form-group">
+                        <label class="form-label" style="color:white;">Starting Blueprint Template</label>
+                        <select class="form-select" id="inp-wizard-blueprint">
+                            <option value="spotlight">Default Spotlight (3 Pages: Spotlight, Celebrations, Socials)</option>
+                            <option value="engineering">Engineering Update (2 Pages: Horizon Deploy, Upcoming Timeline)</option>
+                            <option value="simple">Minimal Notice (1 Page: Welcome Announcement)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label" style="color:white;">Initial Brand Preset Theme</label>
                         <select class="form-select" id="inp-wizard-theme">
                             <option value="ocean">Ocean Breeze (Corporate Blue/Red)</option>
@@ -1511,6 +1660,27 @@
                     </div>
                     <div class="startup-option-desc">Select and load a previously exported `.craftproject` file from your computer to resume editing instantly.</div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE MANAGER GRID OVERVIEW MODAL -->
+    <div class="modal-overlay" id="page-manager-modal">
+        <div class="modal-box" style="max-width: 800px; width: 90%;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size:18px; font-weight:800; color:white;">Page Manager Grid Overview</h2>
+                <button class="btn-close" id="btn-close-page-manager" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; font-weight: 700; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Re-order pages by dragging cards or using the arrows. Edit page titles or manage layout options:</p>
+                
+                <div id="page-manager-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; max-height: 450px; overflow-y: auto; padding: 4px;">
+                    <!-- Dynamically populated page cards -->
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                <button class="btn" id="btn-page-manager-add">+ Add Blank Page</button>
+                <button class="btn btn-primary" id="btn-page-manager-save-close">Save & Close</button>
             </div>
         </div>
     </div>
@@ -2011,6 +2181,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             activeThemeKey: 'ocean',
             fontPairing: 'modern-sans',
             fontScale: 1.0,
+            customTheme: { primary: '#003B70', accent: '#D92626', bgLight: '#F4F6F9', textDark: '#333333' },
             pages: [
                 {
                     id: 'page-1',
@@ -2019,6 +2190,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     bgImage: '',
                     bgOpacity: 0.15,
                     bgSize: 'cover',
+                    orientation: 'portrait',
                     blocks: [
                         {
                             id: 'b-hero-pulse',
@@ -2055,6 +2227,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     bgImage: '',
                     bgOpacity: 0.15,
                     bgSize: 'cover',
+                    orientation: 'portrait',
                     blocks: [
                         {
                             id: 'b-awards-story',
@@ -2108,6 +2281,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     bgImage: '',
                     bgOpacity: 0.15,
                     bgSize: 'cover',
+                    orientation: 'portrait',
                     blocks: [
                         {
                             id: 'b-gal-story',
@@ -2213,6 +2387,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
         // SAVE & LOAD LOCAL DRAFT
         function saveDraft() {
+            if (typeof createRevisionSnapshot === 'function') {
+                createRevisionSnapshot('Auto Snapshot');
+            }
             localStorage.setItem('pro_craftletter_studio_state', JSON.stringify(state));
             const status = document.getElementById('save-status');
             if (status) {
@@ -2228,16 +2405,291 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     // Make sure active project loaded
                     if (parsed.projectName) {
                         state = parsed;
+                        if (state.pages) {
+                            state.pages.forEach(p => {
+                                if (!p.orientation) p.orientation = 'portrait';
+                            });
+                        }
                         document.getElementById('header-project-name').textContent = state.projectName;
                         startupModal.classList.remove('active');
                         applyThemePresetsUI();
                         applyGlobalTypographyUI();
+                        if (typeof syncCustomThemeInputs === 'function') syncCustomThemeInputs();
                     }
                 } catch (e) {
                     console.error('Failed to parse draft from localStorage', e);
                 }
             }
         }
+
+        // BLUEPRINT TEMPLATES PRESETS
+        const BLUEPRINTS = {
+            spotlight: [
+                {
+                    id: 'page-1',
+                    title: 'Page 1: Team Spotlight',
+                    bgColor: '#ffffff',
+                    bgImage: '',
+                    bgOpacity: 0.15,
+                    bgSize: 'cover',
+                    orientation: 'portrait',
+                    blocks: [
+                        {
+                            id: 'b-hero-pulse',
+                            type: 'hero',
+                            content: { title: 'THE TEAM PULSE', subtitle: 'News, anniversaries, and social outings', date: 'June 2026 Edition' },
+                            styles: { backgroundColor: '#003B70', color: '#ffffff', accentColor: '#D92626', alignment: 'center', titleSize: '24px' }
+                        },
+                        {
+                            id: 'b-main-art',
+                            type: 'article',
+                            content: {
+                                title: 'Project Horizon Officially Deployed!',
+                                subtitle: 'Spotlight story of the month',
+                                author: 'By Sarah Jenkins, PM Team',
+                                date: 'June 2026',
+                                text: 'We are thrilled to announce that <b>Project Horizon</b> is officially live! This major launch optimizes our UAT turnaround cycles by 40%. A huge thank you to everyone in development, operations, and test gates who contributed to this milestone!',
+                                imgUrl: '',
+                                imgPos: 'right'
+                            },
+                            styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'medium', borderRadius: '8px', titleSize: '18px', textSize: '13px', imgWidth: '100', imgHeight: '120' }
+                        },
+                        {
+                            id: 'b-q-box',
+                            type: 'quote',
+                            content: { text: 'Our cooperation during regression testing was key. We solved 80 blocker defects in record time!', author: '— Raj Kumar, Technical Lead' },
+                            styles: { backgroundColor: '#F4F6F9', color: '#003B70', alignment: 'center', padding: 'medium', textSize: '14px' }
+                        }
+                    ]
+                },
+                {
+                    id: 'page-2',
+                    title: 'Page 2: Celebrations & Awards',
+                    bgColor: '#ffffff',
+                    bgImage: '',
+                    bgOpacity: 0.15,
+                    bgSize: 'cover',
+                    orientation: 'portrait',
+                    blocks: [
+                        {
+                            id: 'b-awards-story',
+                            type: 'article',
+                            content: {
+                                title: 'Recognitions & Celebrations',
+                                subtitle: 'Celebrating our colleagues',
+                                author: '',
+                                date: '',
+                                text: 'We believe in acknowledging the daily milestones and team achievements. Congratulate this month\'s award recipients and check out our upcoming birthdays below!',
+                                imgUrl: '',
+                                imgPos: 'none'
+                            },
+                            styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'center', padding: 'small', borderRadius: '0px', titleSize: '16px', textSize: '13px', imgWidth: '100', imgHeight: '100' }
+                        },
+                        {
+                            id: 'b-awards-grid',
+                            type: 'awards',
+                            content: {
+                                heading: 'STAR PERFORMERS OF THE MONTH',
+                                columns: '2',
+                                items: [
+                                    { name: 'Amanda Lin', title: 'Customer Champion', desc: 'For exceptional speed resolving blocker escalation tickets.', icon: 'trophy' },
+                                    { name: 'Jonathan Miller', title: 'Automation Catalyst', desc: 'For converting regression runs, saving 20 hours per sprint.', icon: 'star' }
+                                ]
+                            },
+                            styles: { backgroundColor: '#ffffff', cardBg: '#F4F6F9', titleColor: '#003B70', textColor: '#4b5563' }
+                        },
+                        {
+                            id: 'b-celebs-box',
+                            type: 'celebrations',
+                            content: {
+                                heading: 'ANNIVERSARIES & CELEBRATIONS',
+                                birthdays: [
+                                    { name: 'Michael Vance', date: 'June 5', icon: 'cake' },
+                                    { name: 'Priya Sharma', date: 'June 18', icon: 'balloon' }
+                                ],
+                                anniversaries: [
+                                    { name: 'Sarah Jenkins', details: '3 Years Service', icon: 'sparkle' },
+                                    { name: 'Daniel Cho', details: '5 Years Service', icon: 'trophy' }
+                                ]
+                            },
+                            styles: { backgroundColor: '#ffffff', titleColor: '#003B70', itemColor: '#333333' }
+                        }
+                    ]
+                },
+                {
+                    id: 'page-3',
+                    title: 'Page 3: Social & Outings',
+                    bgColor: '#ffffff',
+                    bgImage: '',
+                    bgOpacity: 0.15,
+                    bgSize: 'cover',
+                    orientation: 'portrait',
+                    blocks: [
+                        {
+                            id: 'b-gal-story',
+                            type: 'article',
+                            content: {
+                                title: 'Team Fun & Social Outings',
+                                subtitle: 'Life outside the office',
+                                author: '',
+                                date: '',
+                                text: 'Here\'s a look at the team having fun during our weekend barbeque social event! Thanks to everyone who helped grill.',
+                                imgUrl: '',
+                                imgPos: 'none'
+                            },
+                            styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'small', borderRadius: '0px', titleSize: '16px', textSize: '13px', imgWidth: '100', imgHeight: '100' }
+                        },
+                        {
+                            id: 'b-photos-grid',
+                            type: 'gallery',
+                            content: {
+                                heading: 'TEAM PHOTO GALLERY',
+                                columns: '3',
+                                items: [
+                                    { imgUrl: '', caption: 'Grill master in action' },
+                                    { imgUrl: '', caption: 'Team lunch tables' }
+                                ]
+                            },
+                            styles: { backgroundColor: '#ffffff', captionColor: '#4b5563' }
+                        },
+                        {
+                            id: 'b-timeline-events',
+                            type: 'timeline',
+                            content: {
+                                heading: 'UPCOMING TEAM EVENTS',
+                                items: [
+                                    { date: 'June 12', title: 'Social Quiz Night', desc: 'Fun trivia sync on team Confluence wiki.' },
+                                    { date: 'June 25', title: 'Q3 Hackathon', desc: 'Collaborative builder sprint cycle.' }
+                                ]
+                            },
+                            styles: { backgroundColor: '#ffffff', accentColor: '#D92626' }
+                        },
+                        {
+                            id: 'b-cta-btn',
+                            type: 'cta-button',
+                            content: { label: 'Visit Our Team Wiki Hub', url: 'https://confluence.internal' },
+                            styles: { backgroundColor: '#ffffff', buttonColor: '#003B70', textColor: '#ffffff', alignment: 'center', borderRadius: '6px' }
+                        },
+                        {
+                            id: 'b-foot-block',
+                            type: 'footer',
+                            content: {
+                                disclaimer: 'This is an internal newsletter for members of your team. Share metrics carefully.',
+                                contact: 'Feedback? Contact us at: team-newsletter@company.com'
+                            },
+                            styles: { backgroundColor: '#F4F6F9', color: '#4b5563' }
+                        }
+                    ]
+                }
+            ],
+            engineering: [
+                {
+                    id: 'page-1',
+                    title: 'Page 1: Deployment Pulse',
+                    bgColor: '#ffffff',
+                    bgImage: '',
+                    bgOpacity: 0.15,
+                    bgSize: 'cover',
+                    orientation: 'portrait',
+                    blocks: [
+                        {
+                            id: 'e-hero',
+                            type: 'hero',
+                            content: { title: 'ENGINEERING UPDATE', subtitle: 'Deployment tracking and delivery milestones', date: 'June 2026' },
+                            styles: { backgroundColor: '#003B70', color: '#ffffff', accentColor: '#D92626', alignment: 'center', titleSize: '24px' }
+                        },
+                        {
+                            id: 'e-main-article',
+                            type: 'article',
+                            content: {
+                                title: 'Project Horizon Officially Deployed!',
+                                subtitle: 'Milestone Release',
+                                author: 'By Development Lead',
+                                date: 'June 2026',
+                                text: 'We are thrilled to announce that <b>Project Horizon</b> is officially live! This major launch optimizes our internal UAT turnaround cycles by 40%. A huge thank you to everyone in development, operations, and test gates who contributed to this milestone!',
+                                imgUrl: '',
+                                imgPos: 'none'
+                            },
+                            styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'medium', borderRadius: '8px', titleSize: '18px', textSize: '13px', imgWidth: '100', imgHeight: '120' }
+                        }
+                    ]
+                },
+                {
+                    id: 'page-2',
+                    title: 'Page 2: Schedule & Timeline',
+                    bgColor: '#ffffff',
+                    bgImage: '',
+                    bgOpacity: 0.15,
+                    bgSize: 'cover',
+                    orientation: 'portrait',
+                    blocks: [
+                        {
+                            id: 'e-timeline',
+                            type: 'timeline',
+                            content: {
+                                heading: 'UPCOMING TIMELINE SCHEDULE',
+                                items: [
+                                    { date: 'June 12', title: 'Social Quiz Night', desc: 'Fun trivia sync on team Confluence wiki.' },
+                                    { date: 'June 25', title: 'Q3 Hackathon', desc: 'Collaborative builder sprint cycle.' }
+                                ]
+                            },
+                            styles: { backgroundColor: '#ffffff', accentColor: '#D92626' }
+                        },
+                        {
+                            id: 'e-foot',
+                            type: 'footer',
+                            content: {
+                                disclaimer: 'This is an internal newsletter for members of your team. Share metrics carefully.',
+                                contact: 'Feedback? Contact us at: engineering@company.com'
+                            },
+                            styles: { backgroundColor: '#F4F6F9', color: '#4b5563' }
+                        }
+                    ]
+                }
+            ],
+            simple: [
+                {
+                    id: 'page-1',
+                    title: 'Welcome Announcement',
+                    bgColor: '#ffffff',
+                    bgImage: '',
+                    bgOpacity: 0.15,
+                    bgSize: 'cover',
+                    orientation: 'portrait',
+                    blocks: [
+                        {
+                            id: 's-hero',
+                            type: 'hero',
+                            content: { title: 'ANNOUNCEMENT', subtitle: 'Important team announcement bulletin', date: 'June 2026' },
+                            styles: { backgroundColor: '#003B70', color: '#ffffff', accentColor: '#D92626', alignment: 'center', titleSize: '24px' }
+                        },
+                        {
+                            id: 's-article',
+                            type: 'article',
+                            content: {
+                                title: 'Welcome to CraftLetter Studio',
+                                subtitle: 'Notice',
+                                author: 'System Administrator',
+                                date: 'June 2026',
+                                text: 'This is a single page minimalist notice. You can select components from the left library blocks to populate this page or add new pages in the sidebar.',
+                                imgUrl: '',
+                                imgPos: 'none'
+                            },
+                            styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'medium', borderRadius: '0', titleSize: '18px', textSize: '13px' }
+                        },
+                        {
+                            id: 's-foot',
+                            type: 'footer',
+                            content: {
+                                disclaimer: 'This is an internal newsletter for members of your team. Share metrics carefully.',
+                                contact: 'Feedback? Contact us at: admin@company.com'
+                            },
+                            styles: { backgroundColor: '#F4F6F9', color: '#4b5563' }
+                        }
+                    ]
+                }
+            ]
+        };
 
         // WIZARD WIDGET BINDINGS
         document.getElementById('btn-wizard-new').onclick = () => {
@@ -2253,6 +2705,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             }
             state.projectName = name;
             state.activeThemeKey = document.getElementById('inp-wizard-theme').value;
+
+            // Load selected blueprint
+            const blueprintKey = document.getElementById('inp-wizard-blueprint').value;
+            const chosenBlueprint = BLUEPRINTS[blueprintKey] || BLUEPRINTS.spotlight;
+            state.pages = JSON.parse(JSON.stringify(chosenBlueprint));
+            state.selectedPageId = state.pages[0]?.id || 'page-1';
             
             // Set heading and theme preset colors
             document.getElementById('header-project-name').textContent = state.projectName;
@@ -2283,6 +2741,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         return;
                     }
                     state = parsed;
+                    state.pages.forEach(p => {
+                        if (!p.orientation) p.orientation = 'portrait';
+                    });
                     document.getElementById('header-project-name').textContent = state.projectName;
                     
                     // Activate theme dot preset header
@@ -2371,7 +2832,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         }
 
         function applyThemePresetColorsOnly(key) {
-            const colors = THEMES[key];
+            const colors = key === 'custom' 
+                ? (state.customTheme || { primary: '#003B70', accent: '#D92626', bgLight: '#F4F6F9', textDark: '#333333' })
+                : THEMES[key];
+            if (!colors) return;
             state.pages.forEach(page => {
                 page.blocks.forEach(block => {
                     if (block.type === 'hero') {
@@ -2395,6 +2859,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         block.styles.accentColor = colors.accent;
                     } else if (block.type === 'footer') {
                         block.styles.backgroundColor = colors.bgLight;
+                    } else if (block.type === 'freeform') {
+                        // Adapt custom brand colors for freeform title blocks if applicable
+                        if (block.styles.color && block.styles.color !== '#ffffff') {
+                            block.styles.color = colors.primary;
+                        }
                     }
                 });
             });
@@ -2410,6 +2879,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             renderPagesList();
             renderDocumentCanvas();
             runAuditChecks();
+            renderRevisionHistoryUI();
         }
 
         // RENDER TOP VIEWPORT PAGE TABS
@@ -2561,6 +3031,21 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         function renderDocumentCanvas() {
             domCanvas.innerHTML = '';
             
+            // Set dynamic frame size based on active page orientation
+            const activePage = state.pages.find(p => p.id === state.selectedPageId);
+            const isLandscape = activePage && activePage.orientation === 'landscape';
+            
+            const frame = document.getElementById('newsletter-document-canvas');
+            if (frame) {
+                if (isLandscape) {
+                    frame.style.maxWidth = '848px';
+                    frame.style.minHeight = '600px';
+                } else {
+                    frame.style.maxWidth = '600px';
+                    frame.style.minHeight = '848px';
+                }
+            }
+            
             state.pages.forEach((page, pIdx) => {
                 const sheet = document.createElement('div');
                 sheet.className = 'newsletter-page-sheet';
@@ -2570,6 +3055,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                 // Active display page toggle
                 if (state.selectedPageId !== page.id) {
                     sheet.style.display = 'none';
+                }
+
+                // Adjust page sheet height based on orientation
+                if (page.orientation === 'landscape') {
+                    sheet.style.minHeight = '580px';
+                } else {
+                    sheet.style.minHeight = '828px';
                 }
 
                 // Apply background image directly to the sheet to match compile output and avoid html2canvas offset bugs
@@ -2669,8 +3161,29 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     blockWrapper.setAttribute('data-block-id', block.id);
                     blockWrapper.setAttribute('draggable', 'true');
                     
+                    // Toggle draggable off if interacting with a draggable free element or resize handle
+                    blockWrapper.addEventListener('mousedown', (ev) => {
+                        const isFree = ev.target.closest('.draggable-free-element') || ev.target.closest('.image-resize-handle');
+                        if (isFree) {
+                            blockWrapper.setAttribute('draggable', 'false');
+                        }
+                    });
+                    
+                    blockWrapper.addEventListener('mouseup', () => {
+                        blockWrapper.setAttribute('draggable', 'true');
+                    });
+
+                    blockWrapper.addEventListener('mouseleave', () => {
+                        blockWrapper.setAttribute('draggable', 'true');
+                    });
+                    
                     // DRAG START
                     blockWrapper.addEventListener('dragstart', (ev) => {
+                        const isFree = ev.target.closest('.draggable-free-element') || ev.target.closest('.image-resize-handle');
+                        if (isFree) {
+                            ev.preventDefault();
+                            return false;
+                        }
                         ev.dataTransfer.setData('text/plain', block.id);
                         ev.dataTransfer.effectAllowed = 'move';
                         // Visual ghost delay
@@ -2744,8 +3257,16 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             const hImg = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '120px';
                             
                             const imgHtml = block.content.imgUrl 
-                                ? `<img src="${block.content.imgUrl}" style="width:${wImg}; max-height:${hImg}; object-fit:cover; border-radius:6px; display:block; margin:0 auto;" alt="Article Image">`
-                                : SVG_GRAPHICS.photo;
+                                ? `<div class="resizable-image-wrapper" data-action="canvas-upload" style="position: relative; display: inline-block; width: ${wImg}; height: ${hImg}; margin: 0 auto; vertical-align: top; cursor: pointer;">
+                                       <img src="${block.content.imgUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block;" alt="Article Image">
+                                       <div class="hover-upload-overlay no-print" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 11px; font-weight: bold;">Click to Change</div>
+                                       <div class="image-resize-handle no-print"></div>
+                                   </div>`
+                                : `<div data-action="canvas-upload" style="cursor: pointer; position: relative; width: ${wImg}; height: ${hImg}; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #e5e7eb; border-radius: 6px;">
+                                       ${SVG_GRAPHICS.photo}
+                                       <div class="hover-upload-overlay" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 11px; font-weight: bold;">Click to Upload</div>
+                                       <div class="image-resize-handle no-print"></div>
+                                   </div>`;
                                 
                             const articleText = `
                                 <h2 style="margin: 0 0 6px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>
@@ -2779,50 +3300,244 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             }
                             break;
 
-                        case 'gallery':
-                            const cols = parseInt(block.content.columns) || 3;
-                            const cellWidth = Math.floor(100 / cols) + '%';
-                            let galleryRows = '<tr>';
+                        case 'freeform':
+                            const fWImg = block.styles.imgWidth ? block.styles.imgWidth + '%' : '100%';
+                            const fHImg = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '200px';
+                            const fLayout = block.content.layout || 'list';
                             
+                            // Initialize default positions if not set
+                            if (block.content.imgLeft === undefined) block.content.imgLeft = '10%';
+                            if (block.content.imgTop === undefined) block.content.imgTop = '10px';
+                            if (block.content.textLeft === undefined) block.content.textLeft = '10%';
+                            if (block.content.textTop === undefined) block.content.textTop = '220px';
+                            if (block.content.textWidth === undefined) block.content.textWidth = '80%';
+                            if (block.styles.blockHeight === undefined) block.styles.blockHeight = '450';
+
+                            let fImgHtml = '';
+                            if (block.content.imgUrl) {
+                                fImgHtml = `<div class="resizable-image-wrapper ${fLayout === 'free' ? 'draggable-free-element' : ''}" data-action="canvas-upload" data-block-id="${block.id}" data-type="freeform-image" style="position: ${fLayout === 'free' ? 'absolute' : 'relative'}; display: inline-block; width: ${fWImg}; height: ${fHImg}; margin: 0 auto; vertical-align: top; cursor: pointer; ${fLayout === 'free' ? `left: ${block.content.imgLeft}; top: ${block.content.imgTop}; z-index: 10;` : ''}">
+                                       <img src="${block.content.imgUrl}" draggable="false" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block;" alt="Freeform Image">
+                                       <div class="hover-upload-overlay no-print" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 11px; font-weight: bold;">Click to Change</div>
+                                       <div class="image-resize-handle no-print"></div>
+                                   </div>`;
+                            } else {
+                                fImgHtml = `<div class="${fLayout === 'free' ? 'draggable-free-element' : ''}" data-action="canvas-upload" data-block-id="${block.id}" data-type="freeform-image" style="cursor: pointer; position: ${fLayout === 'free' ? 'absolute' : 'relative'}; width: ${fWImg}; height: ${fHImg}; margin: 0 auto; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 6px; ${fLayout === 'free' ? `left: ${block.content.imgLeft}; top: ${block.content.imgTop}; z-index: 10;` : ''}">
+                                       <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#9ca3af" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                       <span style="font-size: 11px; color: #9ca3af; margin-top: 6px; font-weight: 600;">Click to upload image</span>
+                                       <div class="hover-upload-overlay" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 11px; font-weight: bold;">Click to Upload</div>
+                                       <div class="image-resize-handle no-print"></div>
+                                   </div>`;
+                            }
+
+                            if (fLayout === 'free') {
+                                blockContent.style.position = 'relative';
+                                blockContent.style.minHeight = block.styles.blockHeight + 'px';
+                                
+                                html = `
+                                    ${fImgHtml}
+                                    <div class="draggable-free-element" data-block-id="${block.id}" data-type="freeform-text" style="position: absolute; left: ${block.content.textLeft}; top: ${block.content.textTop}; width: ${block.content.textWidth}; text-align: ${block.styles.alignment}; z-index: 5;">
+                                        ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                        <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};" contenteditable="true">${block.content.text}</div>
+                                    </div>
+                                `;
+                            } else if (fLayout === 'grid') {
+                                blockContent.style.position = '';
+                                blockContent.style.minHeight = '';
+                                const leftLayout = block.content.imgPos === 'left' || block.content.imgPos === 'top';
+                                const freeformText = `
+                                    ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                    <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};" contenteditable="true">${block.content.text}</div>
+                                `;
+                                html = `
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            ${leftLayout ? `<td width="50%" valign="top" align="center" style="padding: 10px 10px 10px 0;">${fImgHtml}</td>` : ''}
+                                            <td width="50%" valign="top" style="padding: 10px 10px;">
+                                                ${freeformText}
+                                            </td>
+                                            ${!leftLayout ? `<td width="50%" valign="top" align="center" style="padding: 10px 0 10px 10px;">${fImgHtml}</td>` : ''}
+                                        </tr>
+                                    </table>
+                                `;
+                            } else {
+                                // List / Sequential
+                                blockContent.style.position = '';
+                                blockContent.style.minHeight = '';
+                                const freeformText = `
+                                    ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                    <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};" contenteditable="true">${block.content.text}</div>
+                                `;
+                                if (block.content.imgPos === 'none') {
+                                    html = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding: 10px 10px;">${freeformText}</td></tr></table>`;
+                                } else if (block.content.imgPos === 'top') {
+                                    html = `
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr><td align="center" style="padding: 10px 10px 14px 10px;">${fImgHtml}</td></tr>
+                                            <tr><td style="padding: 0 10px 10px 10px;">${freeformText}</td></tr>
+                                        </table>
+                                    `;
+                                } else if (block.content.imgPos === 'bottom') {
+                                    html = `
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr><td style="padding: 10px 10px 14px 10px;">${freeformText}</td></tr>
+                                            <tr><td align="center" style="padding: 0 10px 10px 10px;">${fImgHtml}</td></tr>
+                                        </table>
+                                    `;
+                                } else {
+                                    const leftLayout = block.content.imgPos === 'left';
+                                    html = `
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                ${leftLayout ? `<td width="40%" valign="top" align="center" style="padding: 10px 10px 10px 0;">${fImgHtml}</td>` : ''}
+                                                <td width="60%" valign="top" style="padding: 10px 10px;">
+                                                    ${freeformText}
+                                                </td>
+                                                ${!leftLayout ? `<td width="40%" valign="top" align="center" style="padding: 10px 0 10px 10px;">${fImgHtml}</td>` : ''}
+                                            </tr>
+                                        </table>
+                                    `;
+                                }
+                            }
+                            break;
+
+                        case 'gallery':
+                            const gLayout = block.content.layout || 'grid';
                             const gImgHeight = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '100px';
                             const gImgWidth = block.styles.imgWidth ? block.styles.imgWidth + '%' : '100%';
 
-                            block.content.items.forEach((item, index) => {
-                                if (index > 0 && index % cols === 0) {
-                                    galleryRows += '</tr><tr><td height="12" style="font-size:0; line-height:0;">&nbsp;</td></tr><tr>';
-                                }
-                                const itemImg = item.imgUrl 
-                                    ? `<img src="${item.imgUrl}" style="width:${gImgWidth}; height:${gImgHeight}; object-fit:cover; border-radius:6px; display:block; margin:0 auto;" alt="Gallery">`
-                                    : SVG_GRAPHICS.photo;
-                                    
-                                galleryRows += `
-                                    <td width="${cellWidth}" valign="top" align="center" style="padding: 4px;">
-                                        ${itemImg}
-                                        <div class="editable-gallery-caption" data-index="${index}" style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;" contenteditable="true">${item.caption}</div>
-                                    </td>
-                                `;
-                            });
-                            
-                            const rem = block.content.items.length % cols;
-                            if (rem > 0) {
-                                for (let c = 0; c < (cols - rem); c++) {
-                                    galleryRows += `<td width="${cellWidth}">&nbsp;</td>`;
-                                }
-                            }
-                            galleryRows += '</tr>';
+                            if (gLayout === 'free') {
+                                blockContent.style.position = 'relative';
+                                blockContent.style.minHeight = (block.styles.blockHeight || 400) + 'px';
 
-                            html = `
-                                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
-                                    <tr>
-                                        <td>
-                                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                                                ${galleryRows}
-                                            </table>
+                                // Render free absolute item cards
+                                let cardsHtml = '';
+                                block.content.items.forEach((item, index) => {
+                                    // Initialize default positions if not set
+                                    if (item.left === undefined) item.left = ((index * 30) % 70) + '%';
+                                    if (item.top === undefined) item.top = (index * 130) + 'px';
+                                    if (item.width === undefined) item.width = '30%';
+                                    if (item.height === undefined) item.height = '120px';
+
+                                    const itemImgHtml = item.imgUrl 
+                                        ? `<div class="gallery-image-wrapper resizable-image-wrapper gallery-item-free-wrapper" data-action="gallery-item-upload" data-index="${index}" data-block-id="${block.id}" style="position: relative; display: inline-block; width: 100%; height: ${item.height}; cursor: pointer; vertical-align: top;">
+                                               <img src="${item.imgUrl}" draggable="false" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block;" alt="Gallery Image">
+                                               <div class="hover-upload-overlay no-print" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 10px; font-weight: bold;">Click to Change</div>
+                                               <div class="image-resize-handle no-print"></div>
+                                           </div>`
+                                        : `<div class="gallery-item-free-wrapper" data-action="gallery-item-upload" data-index="${index}" data-block-id="${block.id}" style="cursor: pointer; position: relative; width: 100%; height: ${item.height}; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #e5e7eb; border-radius: 6px;">
+                                               ${SVG_GRAPHICS.photo}
+                                               <div class="hover-upload-overlay" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 10px; font-weight: bold;">Click to Upload</div>
+                                               <div class="image-resize-handle no-print"></div>
+                                           </div>`;
+
+                                    cardsHtml += `
+                                        <div class="draggable-free-element" data-block-id="${block.id}" data-type="gallery-item" data-index="${index}" style="position: absolute; left: ${item.left}; top: ${item.top}; width: ${item.width}; z-index: 10; padding: 4px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">
+                                            ${itemImgHtml}
+                                            <div class="editable-gallery-caption" data-index="${index}" style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3; text-align: center;" contenteditable="true">${item.caption}</div>
+                                        </div>
+                                    `;
+                                });
+
+                                html = `
+                                    <div style="font-family: var(--body-font); width: 100%; height: 100%;">
+                                        ${block.content.heading ? `<div style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</div>` : ''}
+                                        <div style="position: relative; width: 100%; height: calc(100% - 30px); min-height: ${parseInt(block.styles.blockHeight || 400) - 30}px;">
+                                            ${cardsHtml}
+                                        </div>
+                                    </div>
+                                `;
+                            } else if (gLayout === 'list') {
+                                blockContent.style.position = '';
+                                blockContent.style.minHeight = '';
+
+                                let rowsHtml = '';
+                                block.content.items.forEach((item, index) => {
+                                    const itemImgHtml = item.imgUrl 
+                                        ? `<div class="gallery-image-wrapper" data-action="gallery-item-upload" data-index="${index}" style="position: relative; display: inline-block; width: 120px; height: 90px; cursor: pointer; vertical-align: top;">
+                                               <img src="${item.imgUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block;" alt="Gallery Image">
+                                               <div class="hover-upload-overlay no-print" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 10px; font-weight: bold;">Click to Change</div>
+                                           </div>`
+                                        : `<div data-action="gallery-item-upload" data-index="${index}" style="cursor: pointer; position: relative; width: 120px; height: 90px; display: flex; align-items: center; justify-content: center; background: #e5e7eb; border-radius: 6px;">
+                                               ${SVG_GRAPHICS.photo}
+                                               <div class="hover-upload-overlay" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 10px; font-weight: bold;">Click to Upload</div>
+                                           </div>`;
+
+                                    rowsHtml += `
+                                        <tr>
+                                            <td width="130" valign="top" style="padding: 8px 0;">
+                                                ${itemImgHtml}
+                                            </td>
+                                            <td valign="top" style="padding: 8px 12px; font-family: var(--body-font);">
+                                                <div class="editable-gallery-caption" data-index="${index}" style="font-size:calc(12px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.4;" contenteditable="true">${item.caption}</div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                });
+
+                                html = `
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        <tr>
+                                            <td>
+                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                    ${rowsHtml}
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                `;
+                            } else {
+                                // Grid Layout (default table layout)
+                                blockContent.style.position = '';
+                                blockContent.style.minHeight = '';
+
+                                const cols = parseInt(block.content.columns) || 3;
+                                const cellWidth = Math.floor(100 / cols) + '%';
+                                let galleryRows = '<tr>';
+                                
+                                block.content.items.forEach((item, index) => {
+                                    if (index > 0 && index % cols === 0) {
+                                        galleryRows += '</tr><tr><td height="12" style="font-size:0; line-height:0;">&nbsp;</td></tr><tr>';
+                                    }
+                                    const itemImgHtml = item.imgUrl 
+                                        ? `<div class="gallery-image-wrapper" data-action="gallery-item-upload" data-index="${index}" style="position: relative; display: inline-block; width: ${gImgWidth}; height: ${gImgHeight}; cursor: pointer; vertical-align: top;">
+                                               <img src="${item.imgUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block;" alt="Gallery Image">
+                                               <div class="hover-upload-overlay no-print" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 10px; font-weight: bold;">Click to Change</div>
+                                           </div>`
+                                        : `<div data-action="gallery-item-upload" data-index="${index}" style="cursor: pointer; position: relative; width: ${gImgWidth}; height: ${gImgHeight}; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #e5e7eb; border-radius: 6px;">
+                                               ${SVG_GRAPHICS.photo}
+                                               <div class="hover-upload-overlay" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; border-radius: 6px; color: white; font-size: 10px; font-weight: bold;">Click to Upload</div>
+                                           </div>`;
+                                        
+                                    galleryRows += `
+                                        <td width="${cellWidth}" valign="top" align="center" style="padding: 4px;">
+                                            ${itemImgHtml}
+                                            <div class="editable-gallery-caption" data-index="${index}" style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;" contenteditable="true">${item.caption}</div>
                                         </td>
-                                    </tr>
-                                </table>
-                            `;
+                                    `;
+                                });
+                                
+                                const rem = block.content.items.length % cols;
+                                if (rem > 0) {
+                                    for (let c = 0; c < (cols - rem); c++) {
+                                        galleryRows += `<td width="${cellWidth}">&nbsp;</td>`;
+                                    }
+                                }
+                                galleryRows += '</tr>';
+
+                                html = `
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        <tr>
+                                            <td>
+                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                    ${galleryRows}
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                `;
+                            }
                             break;
 
                         case 'awards':
@@ -2837,8 +3552,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 const itemIcon = SVG_GRAPHICS[item.icon] || SVG_GRAPHICS.trophy;
                                 const blockFont = block.styles.fontFamily || 'var(--body-font)';
                                 const photoHtml = item.photoUrl
-                                    ? `<img src="${item.photoUrl}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid ${block.styles.titleColor||'#3B82F6'};display:block;margin:0 auto 8px auto;" alt="${item.name}">`
-                                    : `<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,${block.styles.titleColor||'#3B82F6'},#a371f7);display:flex;align-items:center;justify-content:center;margin:0 auto 8px auto;font-size:22px;font-weight:800;color:white;">${item.name?item.name[0].toUpperCase():'?'}</div>`;
+                                    ? `<div class="awards-photo-wrapper" data-action="awards-item-upload" data-index="${index}" style="position: relative; display: block; width: 64px; height: 64px; margin: 0 auto 8px auto; cursor: pointer; border-radius: 50%;">
+                                           <img src="${item.photoUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid ${block.styles.titleColor||'#3B82F6'}; display: block;" alt="${item.name}">
+                                           <div class="hover-upload-overlay no-print" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s; border-radius: 50%; color: white; font-size: 8px; font-weight: bold; text-align: center; line-height: 1.1;">Change</div>
+                                       </div>`
+                                    : `<div data-action="awards-item-upload" data-index="${index}" style="cursor: pointer; position: relative; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg,${block.styles.titleColor||'#3B82F6'},#a371f7); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px auto; font-size: 22px; font-weight: 800; color: white;">
+                                           ${item.name ? item.name[0].toUpperCase() : '?'}
+                                           <div class="hover-upload-overlay" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s; border-radius: 50%; color: white; font-size: 8px; font-weight: bold; text-align: center; line-height: 1.1;">Upload</div>
+                                       </div>`;
                                 awardsRows += `
                                     <td width="${awCellWidth}" valign="top" style="padding: 6px;">
                                         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: ${block.styles.cardBg||'#f3f4f6'}; border-radius: 12px; border-top: 4px solid ${block.styles.titleColor||'#3B82F6'}; font-family:${blockFont};">
@@ -3059,6 +3780,84 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             const wrapper = e.target.closest('.newsletter-block-wrapper');
             if (!sheet) return;
 
+            // Handle file upload placeholder click inside canvas
+            const uploadPlaceholder = e.target.closest('[data-action="canvas-upload"]');
+            if (uploadPlaceholder && !e.target.closest('.image-resize-handle')) {
+                // Skip upload if user just finished dragging or resizing
+                if (window._wasDragging) {
+                    window._wasDragging = false;
+                    return;
+                }
+                e.stopPropagation();
+                if (wrapper) {
+                    const blockId = wrapper.getAttribute('data-block-id');
+                    const page = state.pages.find(p => p.id === state.selectedPageId);
+                    const block = page?.blocks.find(b => b.id === blockId);
+                    if (block) {
+                        promptForImage((base64) => {
+                            block.content.imgUrl = base64;
+                            saveDraft();
+                            renderUI();
+                            if (state.selectedBlockId === block.id) {
+                                renderInspectorProperties(block);
+                            }
+                        });
+                    }
+                }
+                return;
+            }
+
+            // Handle gallery item image upload click inside canvas
+            const galleryUpload = e.target.closest('[data-action="gallery-item-upload"]');
+            if (galleryUpload) {
+                // Skip upload if user just finished dragging or resizing
+                if (window._wasDragging) {
+                    window._wasDragging = false;
+                    return;
+                }
+                e.stopPropagation();
+                if (wrapper) {
+                    const blockId = wrapper.getAttribute('data-block-id');
+                    const page = state.pages.find(p => p.id === state.selectedPageId);
+                    const block = page?.blocks.find(b => b.id === blockId);
+                    const index = parseInt(galleryUpload.getAttribute('data-index'));
+                    if (block && block.content.items && block.content.items[index]) {
+                        promptForImage((base64) => {
+                            block.content.items[index].imgUrl = base64;
+                            saveDraft();
+                            renderUI();
+                            if (state.selectedBlockId === block.id) {
+                                renderInspectorProperties(block);
+                            }
+                        });
+                    }
+                }
+                return;
+            }
+
+            // Handle awards nominee photo upload click inside canvas
+            const awardsUpload = e.target.closest('[data-action="awards-item-upload"]');
+            if (awardsUpload) {
+                e.stopPropagation();
+                if (wrapper) {
+                    const blockId = wrapper.getAttribute('data-block-id');
+                    const page = state.pages.find(p => p.id === state.selectedPageId);
+                    const block = page?.blocks.find(b => b.id === blockId);
+                    const index = parseInt(awardsUpload.getAttribute('data-index'));
+                    if (block && block.content.items && block.content.items[index]) {
+                        promptForImage((base64) => {
+                            block.content.items[index].photoUrl = base64;
+                            saveDraft();
+                            renderUI();
+                            if (state.selectedBlockId === block.id) {
+                                renderInspectorProperties(block);
+                            }
+                        });
+                    }
+                }
+                return;
+            }
+
             // If gear/settings of page is clicked, ignore block clicks
             if (e.target.closest('.btn-mini')) return;
 
@@ -3160,6 +3959,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     <input type="text" class="form-input" id="inp-page-title" value="${page.title}">
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Page Orientation</label>
+                    <select class="form-select" id="inp-page-orientation">
+                        <option value="portrait" ${page.orientation === 'portrait' ? 'selected' : ''}>Portrait (A4 Vertical)</option>
+                        <option value="landscape" ${page.orientation === 'landscape' ? 'selected' : ''}>Landscape (A4 Horizontal)</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Page Background Color</label>
                     <div class="color-picker-wrapper">
                         <input type="color" class="color-picker-input" id="prop-page-bg-picker" value="${page.bgColor}">
@@ -3206,6 +4012,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             page.title = e.target.value;
                             renderPageTabs();
                             renderPagesList();
+                        }
+                        if (e.target.id === 'inp-page-orientation') {
+                            page.orientation = e.target.value;
                         }
                         if (e.target.id === 'inp-page-bgcolor') {
                             page.bgColor = e.target.value;
@@ -3497,11 +4306,40 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     let photoBoxes = '';
                     const galImgWidth = block.styles.imgWidth ? parseInt(block.styles.imgWidth) : 100;
                     const galImgHeight = block.styles.imgHeight ? parseInt(block.styles.imgHeight) : 100;
+                    const galLayout = block.content.layout || 'grid';
+                    const galBlockHeight = block.styles.blockHeight ? parseInt(block.styles.blockHeight) : 400;
 
                     block.content.items.forEach((item, index) => {
                         const imgStatus = item.imgUrl
                             ? `<div style="font-size:10px; color:var(--text-muted); margin-top:4px;">✓ Image loaded (${Math.round(item.imgUrl.length/1024)}KB)</div>`
                             : `<div style="font-size:10px; color:var(--text-muted); margin-top:4px;">No image selected</div>`;
+                        
+                        let coordInputs = '';
+                        if (galLayout === 'free') {
+                            coordInputs = `
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;">
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Left Offset (%)</label>
+                                        <input type="text" class="form-input gallery-item-left" data-index="${index}" value="${item.left || '10%'}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Top Offset (px)</label>
+                                        <input type="text" class="form-input gallery-item-top" data-index="${index}" value="${item.top || '10px'}">
+                                    </div>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px; margin-bottom:4px;">
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Width (%)</label>
+                                        <input type="text" class="form-input gallery-item-width" data-index="${index}" value="${item.width || '30%'}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Height (px)</label>
+                                        <input type="text" class="form-input gallery-item-height" data-index="${index}" value="${item.height || '120px'}">
+                                    </div>
+                                </div>
+                            `;
+                        }
+
                         photoBoxes += `
                             <div class="inspector-item-box">
                                 <div class="inspector-item-box-title">
@@ -3517,16 +4355,40 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                     <label class="form-label">Caption</label>
                                     <input type="text" class="form-input gallery-item-cap" data-index="${index}" value="${item.caption}">
                                 </div>
+                                ${coordInputs}
                             </div>
                         `;
                     });
 
+                    let freeLayoutSliders = '';
+                    if (galLayout === 'free') {
+                        freeLayoutSliders = `
+                            <div class="form-group" style="background: rgba(16,185,129,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.2); margin-bottom:12px;">
+                                <label class="form-label" style="color:#34d399; font-weight:700;">Free Drag Canvas Height</label>
+                                <div class="slider-wrapper">
+                                    <input type="range" class="form-range" id="inp-gal-blockheight" min="200" max="800" step="20" value="${galBlockHeight}">
+                                    <span class="slider-val-label" style="color:#34d399;">${galBlockHeight}px</span>
+                                </div>
+                                <div style="font-size:10px; color:#a7f3d0; margin-top:4px;">Drag and drop cards or resize photo elements in the canvas!</div>
+                            </div>
+                        `;
+                    }
+
                     controls = `
+                        <div class="form-group">
+                            <label class="form-label">Arrangement Layout</label>
+                            <select class="form-select" id="inp-gal-layout">
+                                <option value="grid" ${galLayout === 'grid' ? 'selected' : ''}>Grid Column-Split</option>
+                                <option value="list" ${galLayout === 'list' ? 'selected' : ''}>Stacked List rows</option>
+                                <option value="free" ${galLayout === 'free' ? 'selected' : ''}>Free Drag Canvas Positioning</option>
+                            </select>
+                        </div>
+                        ${freeLayoutSliders}
                         <div class="form-group">
                             <label class="form-label">Section Heading</label>
                             <input type="text" class="form-input" id="inp-gal-heading" value="${block.content.heading}">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="${galLayout !== 'grid' ? 'display:none;' : ''}">
                             <label class="form-label">Columns Count</label>
                             <select class="form-select" id="inp-gal-cols">
                                 <option value="2" ${block.content.columns === '2' ? 'selected' : ''}>2 Columns</option>
@@ -3534,14 +4396,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 <option value="4" ${block.content.columns === '4' ? 'selected' : ''}>4 Columns</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="${galLayout !== 'grid' ? 'display:none;' : ''}">
                             <label class="form-label">Card Images Width</label>
                             <div class="slider-wrapper">
                                 <input type="range" class="form-range" id="inp-gal-imgwidth" min="30" max="100" step="5" value="${galImgWidth}">
                                 <span class="slider-val-label">${galImgWidth}%</span>
                             </div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="${galLayout !== 'grid' ? 'display:none;' : ''}">
                             <label class="form-label">Card Images Height</label>
                             <div class="slider-wrapper">
                                 <input type="range" class="form-range" id="inp-gal-imgheight" min="50" max="300" step="10" value="${galImgHeight}">
@@ -3862,6 +4724,144 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         ${moveBlockDropdown}
                     `;
                     break;
+
+                case 'freeform':
+                    const freeTitleSize = block.styles.titleSize ? parseInt(block.styles.titleSize) : 20;
+                    const freeTextSize = block.styles.textSize ? parseInt(block.styles.textSize) : 13;
+                    const freeImgWidth = block.styles.imgWidth ? parseInt(block.styles.imgWidth) : 100;
+                    const freeImgHeight = block.styles.imgHeight ? parseInt(block.styles.imgHeight) : 200;
+                    const freeLayout = block.content.layout || 'list';
+                    const freeBlockHeight = block.styles.blockHeight ? parseInt(block.styles.blockHeight) : 450;
+
+                    let freeformCoordinateControls = '';
+                    if (freeLayout === 'free') {
+                        freeformCoordinateControls = `
+                            <div class="form-group" style="background: rgba(16,185,129,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.2); margin-bottom:12px;">
+                                <label class="form-label" style="color:#34d399; font-weight:700;">Free Drag Canvas Height</label>
+                                <div class="slider-wrapper">
+                                    <input type="range" class="form-range" id="inp-free-blockheight" min="200" max="800" step="20" value="${freeBlockHeight}">
+                                    <span class="slider-val-label" style="color:#34d399;">${freeBlockHeight}px</span>
+                                </div>
+                                <div style="font-size:10px; color:#a7f3d0; margin-top:4px;">Drag-and-drop elements around inside the canvas!</div>
+                            </div>
+                            
+                            <div class="inspector-item-box" style="margin-bottom:12px;">
+                                <div class="inspector-item-box-title" style="font-size:10px; color:white;">Image Coordinates</div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Left Offset</label>
+                                        <input type="text" class="form-input" id="inp-free-imgleft" value="${block.content.imgLeft || '10%'}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Top Offset</label>
+                                        <input type="text" class="form-input" id="inp-free-imgtop" value="${block.content.imgTop || '10px'}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inspector-item-box" style="margin-bottom:12px;">
+                                <div class="inspector-item-box-title" style="font-size:10px; color:white;">Text Box Coordinates</div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:4px;">
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Left Offset</label>
+                                        <input type="text" class="form-input" id="inp-free-textleft" value="${block.content.textLeft || '10%'}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Top Offset</label>
+                                        <input type="text" class="form-input" id="inp-free-texttop" value="${block.content.textTop || '220px'}">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size:9px;">Width</label>
+                                        <input type="text" class="form-input" id="inp-free-textwidth" value="${block.content.textWidth || '80%'}">
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    controls = `
+                        <div class="form-group">
+                            <label class="form-label">Arrangement Layout</label>
+                            <select class="form-select" id="inp-free-layout">
+                                <option value="list" ${freeLayout === 'list' ? 'selected' : ''}>Stacked / Sequential</option>
+                                <option value="grid" ${freeLayout === 'grid' ? 'selected' : ''}>Grid Column-Split (50/50)</option>
+                                <option value="free" ${freeLayout === 'free' ? 'selected' : ''}>Free Drag Canvas Positioning</option>
+                            </select>
+                        </div>
+                        ${freeformCoordinateControls}
+                        <div class="form-group">
+                            <label class="form-label">Free Section Title</label>
+                            <input type="text" class="form-input" id="inp-free-title" value="${block.content.title || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Title Font Size</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="form-range" id="inp-free-titlesize" min="12" max="36" step="1" value="${freeTitleSize}">
+                                <span class="slider-val-label">${freeTitleSize}px</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Body Text (HTML enabled)</label>
+                            <textarea class="form-input" style="height:120px; resize:none;" id="inp-free-text">${block.content.text}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Body Text Font Size</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="form-range" id="inp-free-textsize" min="9" max="24" step="1" value="${freeTextSize}">
+                                <span class="slider-val-label">${freeTextSize}px</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:10px;">
+                            <label class="form-label">Block Image</label>
+                            <button class="btn" style="width:100%; justify-content:center; margin-bottom:8px;" id="btn-free-img-upload">Browse Local Photo...</button>
+                            ${block.content.imgUrl ? `<button class="btn" style="width:100%; justify-content:center; color:var(--danger); margin-bottom:8px;" id="btn-free-img-remove">Remove Photo</button>` : ''}
+                            ${block.content.imgUrl ? `<div style="margin-top:4px; font-size:10px; color:var(--text-muted); word-break:break-all;">✓ Image loaded (${Math.round(block.content.imgUrl.length/1024)}KB)</div>` : '<div style="font-size:10px; color:var(--text-muted); margin-top:4px;">No image selected</div>'}
+                        </div>
+                        <div class="form-group" style="${freeLayout === 'free' ? 'display:none;' : ''}">
+                            <label class="form-label">Image Width</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="form-range" id="inp-free-imgwidth" min="10" max="100" step="5" value="${freeImgWidth}">
+                                <span class="slider-val-label">${freeImgWidth}%</span>
+                            </div>
+                        </div>
+                        <div class="form-group" style="${freeLayout === 'free' ? 'display:none;' : ''}">
+                            <label class="form-label">Image Height</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="form-range" id="inp-free-imgheight" min="50" max="500" step="10" value="${freeImgHeight}">
+                                <span class="slider-val-label">${freeImgHeight}px</span>
+                            </div>
+                        </div>
+                        <div class="form-group" style="${freeLayout === 'free' ? 'display:none;' : ''}">
+                            <label class="form-label">Image Position</label>
+                            <select class="form-select" id="inp-free-imgpos">
+                                <option value="top" ${block.content.imgPos === 'top' ? 'selected' : ''}>Top</option>
+                                <option value="bottom" ${block.content.imgPos === 'bottom' ? 'selected' : ''}>Bottom</option>
+                                <option value="left" ${block.content.imgPos === 'left' ? 'selected' : ''}>Left Side</option>
+                                <option value="right" ${block.content.imgPos === 'right' ? 'selected' : ''}>Right Side</option>
+                                <option value="none" ${block.content.imgPos === 'none' ? 'selected' : ''}>No Image</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Text Alignment</label>
+                            <select class="form-select" id="inp-free-align">
+                                <option value="left" ${block.styles.alignment === 'left' ? 'selected' : ''}>Left</option>
+                                <option value="center" ${block.styles.alignment === 'center' ? 'selected' : ''}>Center</option>
+                                <option value="right" ${block.styles.alignment === 'right' ? 'selected' : ''}>Right</option>
+                                <option value="justify" ${block.styles.alignment === 'justify' ? 'selected' : ''}>Justified</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Text Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" class="color-picker-input" id="prop-text-color-picker" value="${block.styles.color || '#333333'}">
+                                <input type="text" class="form-input form-input-color-hex" id="inp-free-color" value="${block.styles.color || '#333333'}">
+                            </div>
+                        </div>
+                        ${commonBg}
+                        ${moveBlockDropdown}
+                    `;
+                    break;
             }
 
             domInspector.innerHTML = controls;
@@ -3969,6 +4969,20 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     const idx = parseInt(e.target.getAttribute('data-index'));
                     if (block.content.items[idx]) {
                         block.content.items[idx].caption = e.target.value;
+                        saveDraft();
+                        renderDocumentCanvas();
+                    }
+                };
+            });
+
+            domInspector.querySelectorAll('.gallery-item-left, .gallery-item-top, .gallery-item-width, .gallery-item-height').forEach(elem => {
+                elem.oninput = (e) => {
+                    const idx = parseInt(e.target.getAttribute('data-index'));
+                    if (block.content.items[idx]) {
+                        if (e.target.classList.contains('gallery-item-left')) block.content.items[idx].left = e.target.value;
+                        if (e.target.classList.contains('gallery-item-top')) block.content.items[idx].top = e.target.value;
+                        if (e.target.classList.contains('gallery-item-width')) block.content.items[idx].width = e.target.value;
+                        if (e.target.classList.contains('gallery-item-height')) block.content.items[idx].height = e.target.value;
                         saveDraft();
                         renderDocumentCanvas();
                     }
@@ -4128,6 +5142,29 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     }
                 };
             });
+
+            // FREEFORM IMAGE UPLOAD CONNECTORS
+            const freeUpload = domInspector.querySelector('#btn-free-img-upload');
+            if (freeUpload) {
+                freeUpload.onclick = () => {
+                    promptForImage((base64) => {
+                        block.content.imgUrl = base64;
+                        saveDraft();
+                        renderDocumentCanvas();
+                        renderInspectorProperties(block);
+                    });
+                };
+            }
+            
+            const freeRemove = domInspector.querySelector('#btn-free-img-remove');
+            if (freeRemove) {
+                freeRemove.onclick = () => {
+                    block.content.imgUrl = '';
+                    saveDraft();
+                    renderDocumentCanvas();
+                    renderInspectorProperties(block);
+                };
+            }
         }
 
         // BIND MODIFIED BLOCK COMPONENT PROPERTIES IN THE STATE
@@ -4187,6 +5224,18 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                 block.styles.imgHeight = val;
                 domInspector.querySelector('#inp-gal-imgheight').nextElementSibling.textContent = val + 'px';
             }
+            if (id === 'inp-gal-layout') {
+                block.content.layout = val;
+                setTimeout(() => {
+                    renderUI();
+                    renderInspectorProperties(block);
+                }, 50);
+            }
+            if (id === 'inp-gal-blockheight') {
+                block.styles.blockHeight = val;
+                const lbl = domInspector.querySelector('#inp-gal-blockheight')?.nextElementSibling;
+                if (lbl) lbl.textContent = val + 'px';
+            }
 
             // Block-level font family override
             if (id === 'inp-block-font') block.styles.fontFamily = val;
@@ -4228,6 +5277,46 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             if (id === 'inp-foot-contact') block.content.contact = val;
             if (id === 'inp-foot-color') block.styles.color = val;
 
+            // Freeform Block resizers
+            if (id === 'inp-free-title') block.content.title = val;
+            if (id === 'inp-free-text') block.content.text = val;
+            if (id === 'inp-free-imgpos') block.content.imgPos = val;
+            if (id === 'inp-free-align') block.styles.alignment = val;
+            if (id === 'inp-free-color') block.styles.color = val;
+            if (id === 'inp-free-titlesize') {
+                block.styles.titleSize = val + 'px';
+                domInspector.querySelector('#inp-free-titlesize').nextElementSibling.textContent = val + 'px';
+            }
+            if (id === 'inp-free-textsize') {
+                block.styles.textSize = val + 'px';
+                domInspector.querySelector('#inp-free-textsize').nextElementSibling.textContent = val + 'px';
+            }
+            if (id === 'inp-free-imgwidth') {
+                block.styles.imgWidth = val;
+                domInspector.querySelector('#inp-free-imgwidth').nextElementSibling.textContent = val + '%';
+            }
+            if (id === 'inp-free-imgheight') {
+                block.styles.imgHeight = val;
+                domInspector.querySelector('#inp-free-imgheight').nextElementSibling.textContent = val + 'px';
+            }
+            if (id === 'inp-free-layout') {
+                block.content.layout = val;
+                setTimeout(() => {
+                    renderUI();
+                    renderInspectorProperties(block);
+                }, 50);
+            }
+            if (id === 'inp-free-blockheight') {
+                block.styles.blockHeight = val;
+                const lbl = domInspector.querySelector('#inp-free-blockheight')?.nextElementSibling;
+                if (lbl) lbl.textContent = val + 'px';
+            }
+            if (id === 'inp-free-imgleft') block.content.imgLeft = val;
+            if (id === 'inp-free-imgtop') block.content.imgTop = val;
+            if (id === 'inp-free-textleft') block.content.textLeft = val;
+            if (id === 'inp-free-texttop') block.content.textTop = val;
+            if (id === 'inp-free-textwidth') block.content.textWidth = val;
+
             saveDraft();
             renderDocumentCanvas();
             runAuditChecks();
@@ -4255,13 +5344,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     return {
                         id: randId, type: 'gallery',
                         content: {
-                            heading: 'PHOTO COLLAGE GALLERY', columns: '3',
+                            heading: 'PHOTO COLLAGE GALLERY', columns: '3', layout: 'grid',
                             items: [
                                 { imgUrl: '', caption: 'Fun event photo card 1' },
                                 { imgUrl: '', caption: 'Fun event photo card 2' }
                             ]
                         },
-                        styles: { backgroundColor: '#ffffff', captionColor: '#4b5563', imgWidth: '100', imgHeight: '100' }
+                        styles: { backgroundColor: '#ffffff', captionColor: '#4b5563', imgWidth: '100', imgHeight: '100', blockHeight: '400' }
                     };
                 case 'awards':
                     return {
@@ -4316,6 +5405,18 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         },
                         styles: { backgroundColor: colors.bgLight, color: '#4b5563' }
                     };
+                case 'freeform':
+                    return {
+                        id: randId, type: 'freeform',
+                        content: {
+                            title: 'Free Text Title',
+                            text: 'Customize your text formatting here. Resize the image above or below by selecting this block and using the mouse drag handle on the image corner.',
+                            imgUrl: '', imgPos: 'top', layout: 'list',
+                            imgLeft: '10%', imgTop: '10px',
+                            textLeft: '10%', textTop: '220px', textWidth: '80%'
+                        },
+                        styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'medium', titleSize: '20px', textSize: '13px', imgWidth: '100', imgHeight: '200', blockHeight: '450' }
+                    };
             }
         }
 
@@ -4357,6 +5458,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                 bgImage: '',
                 bgOpacity: 0.15,
                 bgSize: 'cover',
+                orientation: 'portrait',
                 blocks: [
                     {
                         id: 'b-default-' + num,
@@ -4444,6 +5546,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             
             state.pages.forEach((page, pIdx) => {
                 let pageContent = '';
+                const isLandscape = page.orientation === 'landscape';
+                const tableWidth = isLandscape ? 848 : 600;
                 
                 page.blocks.forEach(block => {
                     let blockHTML = '';
@@ -4504,48 +5608,111 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             break;
 
                         case 'gallery':
-                            const gCols = parseInt(block.content.columns) || 3;
-                            const gCellWidth = Math.floor(100 / gCols) + '%';
-                            let gRows = '<tr>';
-                            
-                            const gImgHeight = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '100px';
-                            const gImgWidth = block.styles.imgWidth ? block.styles.imgWidth + '%' : '100%';
+                            const gLayoutComp = block.content.layout || 'grid';
+                            const gImgHeightComp = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '100px';
+                            const gImgWidthComp = block.styles.imgWidth ? block.styles.imgWidth + '%' : '100%';
 
-                            block.content.items.forEach((item, index) => {
-                                if (index > 0 && index % gCols === 0) {
-                                    gRows += '</tr><tr><td height="12" style="font-size:0; line-height:0;">&nbsp;</td></tr><tr>';
-                                }
-                                const itemImg = item.imgUrl 
-                                    ? `<img src="${item.imgUrl}" style="width:${gImgWidth}; height:${gImgHeight}; object-fit:cover; border-radius:6px; display:block; margin:0 auto;" alt="Gallery">`
-                                    : `<div style="background-color:#e5e7eb; border-radius:6px; height:80px; line-height:80px; text-align:center; color:#4B5563; font-family:sans-serif; font-size:11px; font-weight:bold;">Photo</div>`;
-                                    
-                                gRows += `
-                                    <td width="${gCellWidth}" valign="top" align="center" style="padding: 4px; font-family: var(--body-font);">
-                                        ${itemImg}
-                                        <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;">${item.caption}</div>
-                                    </td>
+                            if (gLayoutComp === 'free') {
+                                let cardsHtmlComp = '';
+                                block.content.items.forEach((item, index) => {
+                                    if (item.left === undefined) item.left = ((index * 30) % 70) + '%';
+                                    if (item.top === undefined) item.top = (index * 130) + 'px';
+                                    if (item.width === undefined) item.width = '30%';
+                                    if (item.height === undefined) item.height = '120px';
+
+                                    const itemImg = item.imgUrl 
+                                        ? `<img src="${item.imgUrl}" style="width: 100%; height: ${item.height}; object-fit: cover; border-radius: 6px; display: block;" alt="Gallery">`
+                                        : `<div style="background-color:#e5e7eb; border-radius:6px; height:${item.height}; line-height:${item.height}; text-align:center; color:#4B5563; font-family:sans-serif; font-size:11px; font-weight:bold;">Photo</div>`;
+
+                                    cardsHtmlComp += `
+                                        <div style="position: absolute; left: ${item.left}; top: ${item.top}; width: ${item.width}; z-index: 10;">
+                                            ${itemImg}
+                                            <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3; text-align: center;">${item.caption}</div>
+                                        </div>
+                                    `;
+                                });
+
+                                blockHTML = `
+                                    <div style="font-family: var(--body-font); width: 100%;">
+                                        ${block.content.heading ? `<div style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</div>` : ''}
+                                        <div style="position: relative; width: 100%; min-height: ${block.styles.blockHeight || 400}px;">
+                                            ${cardsHtmlComp}
+                                        </div>
+                                    </div>
                                 `;
-                            });
-                            const gRem = block.content.items.length % gCols;
-                            if (gRem > 0) {
-                                for (let c = 0; c < (gCols - gRem); c++) {
-                                    gRows += `<td width="${gCellWidth}">&nbsp;</td>`;
-                                }
-                            }
-                            gRows += '</tr>';
+                            } else if (gLayoutComp === 'list') {
+                                let listRowsComp = '';
+                                block.content.items.forEach((item, index) => {
+                                    const itemImg = item.imgUrl 
+                                        ? `<img src="${item.imgUrl}" style="width: 120px; height: 90px; object-fit: cover; border-radius: 6px; display: block;" alt="Gallery">`
+                                        : `<div style="background-color:#e5e7eb; border-radius:6px; width: 120px; height: 90px; line-height: 90px; text-align:center; color:#4B5563; font-family:sans-serif; font-size:11px; font-weight:bold;">Photo</div>`;
 
-                            blockHTML = `
-                                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
-                                    <tr>
-                                        <td>
-                                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                                                ${gRows}
-                                            </table>
+                                    listRowsComp += `
+                                        <tr>
+                                            <td width="130" valign="top" style="padding: 8px 0;">
+                                                ${itemImg}
+                                            </td>
+                                            <td valign="top" style="padding: 8px 12px; font-family: var(--body-font);">
+                                                <div style="font-size:calc(12px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.4;">${item.caption}</div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                });
+
+                                blockHTML = `
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        <tr>
+                                            <td>
+                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                    ${listRowsComp}
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                `;
+                            } else {
+                                // Grid Layout
+                                const gCols = parseInt(block.content.columns) || 3;
+                                const gCellWidth = Math.floor(100 / gCols) + '%';
+                                let gRows = '<tr>';
+
+                                block.content.items.forEach((item, index) => {
+                                    if (index > 0 && index % gCols === 0) {
+                                        gRows += '</tr><tr><td height="12" style="font-size:0; line-height:0;">&nbsp;</td></tr><tr>';
+                                    }
+                                    const itemImg = item.imgUrl 
+                                        ? `<img src="${item.imgUrl}" style="width:${gImgWidthComp}; height:${gImgHeightComp}; object-fit:cover; border-radius:6px; display:block; margin:0 auto;" alt="Gallery">`
+                                        : `<div style="background-color:#e5e7eb; border-radius:6px; height:80px; line-height:80px; text-align:center; color:#4B5563; font-family:sans-serif; font-size:11px; font-weight:bold;">Photo</div>`;
+                                        
+                                    gRows += `
+                                        <td width="${gCellWidth}" valign="top" align="center" style="padding: 4px; font-family: var(--body-font);">
+                                            ${itemImg}
+                                            <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;">${item.caption}</div>
                                         </td>
-                                    </tr>
-                                </table>
-                            `;
+                                    `;
+                                });
+                                const gRem = block.content.items.length % gCols;
+                                if (gRem > 0) {
+                                    for (let c = 0; c < (gCols - gRem); c++) {
+                                        gRows += `<td width="${gCellWidth}">&nbsp;</td>`;
+                                    }
+                                }
+                                gRows += '</tr>';
+
+                                blockHTML = `
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        <tr>
+                                            <td>
+                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                    ${gRows}
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                `;
+                            }
                             break;
 
                         case 'awards':
@@ -4712,6 +5879,70 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 </table>
                             `;
                             break;
+
+                        case 'freeform':
+                            const fWImgComp = block.styles.imgWidth ? block.styles.imgWidth + '%' : '100%';
+                            const fHImgComp = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '200px';
+                            const fLayoutComp = block.content.layout || 'list';
+
+                            const fImgHTMLComp = block.content.imgUrl 
+                                ? `<img src="${block.content.imgUrl}" style="width:${fWImgComp}; height:${fHImgComp}; object-fit:cover; border-radius:6px; display:block;" alt="Freeform Image">`
+                                : '';
+                                
+                            const fTxtHTMLComp = `
+                                ${block.content.title ? `<h2 style="margin: 0 0 6px 0; font-size: ${hSize}; font-family: var(--heading-font); font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                <div style="font-size: ${bSize}; font-family: var(--body-font); line-height: 1.6; text-align: ${block.styles.alignment};">${block.content.text}</div>
+                            `;
+
+                            if (fLayoutComp === 'free') {
+                                blockHTML = `
+                                    <div style="position: relative; width: 100%; min-height: ${block.styles.blockHeight || 450}px;">
+                                        ${fImgHTMLComp ? `<div style="position: absolute; left: ${block.content.imgLeft || '10%'}; top: ${block.content.imgTop || '10px'}; width: ${fWImgComp}; height: ${fHImgComp}; z-index: 10;">${fImgHTMLComp}</div>` : ''}
+                                        <div style="position: absolute; left: ${block.content.textLeft || '10%'}; top: ${block.content.textTop || '220px'}; width: ${block.content.textWidth || '80%'}; z-index: 5;">${fTxtHTMLComp}</div>
+                                    </div>
+                                `;
+                            } else if (fLayoutComp === 'grid') {
+                                const leftLayout = block.content.imgPos === 'left' || block.content.imgPos === 'top';
+                                blockHTML = `
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            ${(leftLayout && fImgHTMLComp) ? `<td width="50%" valign="top" align="center" style="padding: 10px 10px 10px 0;">${fImgHTMLComp}</td>` : ''}
+                                            <td width="${fImgHTMLComp ? '50%' : '100%'}" valign="top" style="padding: 10px 10px;">${fTxtHTMLComp}</td>
+                                            ${(!leftLayout && fImgHTMLComp) ? `<td width="50%" valign="top" align="center" style="padding: 10px 0 10px 10px;">${fImgHTMLComp}</td>` : ''}
+                                        </tr>
+                                    </table>
+                                `;
+                            } else {
+                                if (block.content.imgPos === 'none') {
+                                    blockHTML = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding: 10px 10px;">${fTxtHTMLComp}</td></tr></table>`;
+                                } else if (block.content.imgPos === 'top') {
+                                    blockHTML = `
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            ${fImgHTMLComp ? `<tr><td align="center" style="padding: 10px 10px 14px 10px;">${fImgHTMLComp}</td></tr>` : ''}
+                                            <tr><td style="padding: 0 10px 10px 10px;">${fTxtHTMLComp}</td></tr>
+                                        </table>
+                                    `;
+                                } else if (block.content.imgPos === 'bottom') {
+                                    blockHTML = `
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr><td style="padding: 10px 10px 14px 10px;">${fTxtHTMLComp}</td></tr>
+                                            ${fImgHTMLComp ? `<tr><td align="center" style="padding: 0 10px 10px 10px;">${fImgHTMLComp}</td></tr>` : ''}
+                                        </table>
+                                    `;
+                                } else {
+                                    const isLeft = block.content.imgPos === 'left';
+                                    blockHTML = `
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                ${(isLeft && fImgHTMLComp) ? `<td width="40%" valign="top" align="center" style="padding: 10px 10px 10px 0;">${fImgHTMLComp}</td>` : ''}
+                                                <td width="${fImgHTMLComp ? '60%' : '100%'}" valign="top" style="padding: 10px 10px;">${fTxtHTMLComp}</td>
+                                                ${(!isLeft && fImgHTMLComp) ? `<td width="40%" valign="top" align="center" style="padding: 10px 0 10px 10px;">${fImgHTMLComp}</td>` : ''}
+                                            </tr>
+                                        </table>
+                                    `;
+                                }
+                            }
+                            break;
                     }
 
                     let bg = block.styles.backgroundColor || '#ffffff';
@@ -4760,7 +5991,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     <!-- START OF PAGE ${pIdx + 1} -->
                     <tr>
                         <td align="center" style="padding-bottom: 40px; page-break-after: always; break-after: page;">
-                            <table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px; ${sheetBgStyle} border: 1px solid #D1D5DB; border-radius: 0px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position:relative;">
+                            <table width="${tableWidth}" border="0" cellspacing="0" cellpadding="0" style="width: ${tableWidth}px; ${sheetBgStyle} border: 1px solid #D1D5DB; border-radius: 0px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position:relative;">
                                 <tr>
                                     <td>
                                         <!-- Opacity background styling for emails using overlay or directly -->
@@ -4922,15 +6153,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
             // Compilation rendering sequence loop
             async function runRenderLoop(q) {
+                // Determine orientation of the first page to initialize document correctly
+                const firstPageObj = state.pages[0];
+                const firstPageLandscape = firstPageObj && firstPageObj.orientation === 'landscape';
+
                 // Empty PDF state if re-running compression
                 const activeDoc = new jsPDF({
-                    orientation: 'p',
+                    orientation: firstPageLandscape ? 'l' : 'p',
                     unit: 'pt',
                     format: 'a4'
                 });
 
                 for (let i = 0; i < totalPages; i++) {
                     const sheet = sheets[i];
+                    const pageObj = state.pages[i];
+                    const isPageLandscape = pageObj && pageObj.orientation === 'landscape';
+
                     pdfProgressDesc.textContent = `Rendering page sheet ${i + 1} of ${totalPages}...`;
                     pdfProgressBar.style.width = Math.round(((i + 0.2) / totalPages) * 100) + '%';
                     
@@ -4944,10 +6182,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     const imgData = canvas.toDataURL('image/jpeg', q);
                     
                     if (i > 0) {
-                        activeDoc.addPage();
+                        activeDoc.addPage('a4', isPageLandscape ? 'l' : 'p');
                     }
 
-                    activeDoc.addImage(imgData, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+                    // Retrieve dimensions for this page's orientation
+                    const currentW = activeDoc.internal.pageSize.getWidth();
+                    const currentH = activeDoc.internal.pageSize.getHeight();
+
+                    activeDoc.addImage(imgData, 'JPEG', 0, 0, currentW, currentH, undefined, 'FAST');
                     pdfProgressBar.style.width = Math.round(((i + 1) / totalPages) * 100) + '%';
                 }
 
@@ -5000,6 +6242,289 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             }
         }
 
+        // DYNAMIC IMAGE RESIZING ENGINE
+        let resizeState = {
+            isResizing: false,
+            blockId: null,
+            initialX: 0,
+            initialY: 0,
+            initialWidth: 0,
+            initialHeight: 0,
+            imgElement: null,
+            wrapperElement: null,
+            containerWidth: 0
+        };
+
+        function handleImageResize(e) {
+            if (!resizeState.isResizing) return;
+            
+            const deltaX = e.clientX - resizeState.initialX;
+            const deltaY = e.clientY - resizeState.initialY;
+            
+            let newWidth = resizeState.initialWidth + deltaX;
+            let newHeight = resizeState.initialHeight + deltaY;
+            
+            // Constrain minimum and maximum values
+            if (newWidth < 55) newWidth = 55;
+            if (newHeight < 40) newHeight = 40;
+            if (newWidth > resizeState.containerWidth) newWidth = resizeState.containerWidth;
+            
+            // Convert to percentage
+            const pctWidth = Math.round((newWidth / resizeState.containerWidth) * 100);
+            
+            resizeState.wrapperElement.style.width = pctWidth + '%';
+            resizeState.wrapperElement.style.height = newHeight + 'px';
+            
+            // Update active inspector slider inputs if visible
+            const isGalleryFree = resizeState.wrapperElement.classList.contains('gallery-item-free-wrapper');
+            if (isGalleryFree) {
+                const idx = parseInt(resizeState.wrapperElement.getAttribute('data-index'));
+                const widthInp = domInspector.querySelector(`.gallery-item-width[data-index="${idx}"]`);
+                const heightInp = domInspector.querySelector(`.gallery-item-height[data-index="${idx}"]`);
+                if (widthInp) widthInp.value = pctWidth + '%';
+                if (heightInp) heightInp.value = newHeight + 'px';
+            } else {
+                const widthInput = document.getElementById('inp-art-imgwidth') || document.getElementById('inp-free-imgwidth');
+                if (widthInput) {
+                    widthInput.value = pctWidth;
+                    const label = widthInput.nextElementSibling;
+                    if (label) label.textContent = pctWidth + '%';
+                }
+                
+                const heightInput = document.getElementById('inp-art-imgheight') || document.getElementById('inp-free-imgheight');
+                if (heightInput) {
+                    heightInput.value = newHeight;
+                    const label = heightInput.nextElementSibling;
+                    if (label) label.textContent = newHeight + 'px';
+                }
+            }
+        }
+
+        function stopImageResize(e) {
+            if (!resizeState.isResizing) return;
+            
+            document.removeEventListener('mousemove', handleImageResize);
+            document.removeEventListener('mouseup', stopImageResize);
+            
+            const page = state.pages.find(p => p.id === state.selectedPageId);
+            const block = page?.blocks.find(b => b.id === resizeState.blockId);
+            if (block) {
+                const currentWidth = Math.round(parseFloat(resizeState.wrapperElement.style.width));
+                const currentHeight = parseFloat(resizeState.wrapperElement.style.height);
+                
+                const isGalleryFree = resizeState.wrapperElement.classList.contains('gallery-item-free-wrapper');
+                if (isGalleryFree) {
+                    const idx = parseInt(resizeState.wrapperElement.getAttribute('data-index'));
+                    if (block.content.items[idx]) {
+                        block.content.items[idx].width = currentWidth + '%';
+                        block.content.items[idx].height = currentHeight + 'px';
+                    }
+                } else {
+                    block.styles.imgWidth = currentWidth.toString();
+                    block.styles.imgHeight = currentHeight.toString();
+                }
+                
+                saveDraft();
+                
+                // Keep inspector properties in sync
+                if (state.selectedBlockId === block.id) {
+                    renderInspectorProperties(block);
+                }
+            }
+            
+            resizeState.isResizing = false;
+            // Prevent click from triggering upload after resize
+            window._wasDragging = true;
+            setTimeout(() => { window._wasDragging = false; }, 300);
+        }
+
+        // DRAG AND DROP ABSOLUTE CANVAS POSITIONING FOR FREE LAYOUT
+        let dragFreeState = {
+            isDragging: false,
+            blockId: null,
+            elementType: null, // 'freeform-image', 'freeform-text', 'gallery-item'
+            galleryIndex: null,
+            initialX: 0,
+            initialY: 0,
+            initialLeft: 0,
+            initialTop: 0,
+            containerRect: null,
+            element: null,
+            block: null
+        };
+
+        function handleFreeElementDrag(e) {
+            if (!dragFreeState.isDragging) return;
+            
+            const deltaX = e.clientX - dragFreeState.initialX;
+            const deltaY = e.clientY - dragFreeState.initialY;
+            
+            const containerWidth = dragFreeState.containerRect.width || 560;
+            const containerHeight = dragFreeState.containerRect.height || 400;
+            
+            // Calculate new Left offset (percentage)
+            const initialLeftPx = (dragFreeState.initialLeft / 100) * containerWidth;
+            const newLeftPx = initialLeftPx + deltaX;
+            const newLeftPercent = Math.max(0, Math.min(95, (newLeftPx / containerWidth) * 100));
+            
+            // Calculate new Top offset (pixels)
+            const newTopPx = Math.max(0, Math.min(containerHeight - 40, dragFreeState.initialTop + deltaY));
+            
+            dragFreeState.element.style.left = newLeftPercent.toFixed(1) + '%';
+            dragFreeState.element.style.top = newTopPx.toFixed(0) + 'px';
+            
+            // Update inspector coordinates if visible in real time
+            if (dragFreeState.elementType === 'freeform-image') {
+                const inpLeft = document.getElementById('inp-free-imgleft');
+                const inpTop = document.getElementById('inp-free-imgtop');
+                if (inpLeft) inpLeft.value = newLeftPercent.toFixed(1) + '%';
+                if (inpTop) inpTop.value = newTopPx.toFixed(0) + 'px';
+            } else if (dragFreeState.elementType === 'freeform-text') {
+                const inpLeft = document.getElementById('inp-free-textleft');
+                const inpTop = document.getElementById('inp-free-texttop');
+                if (inpLeft) inpLeft.value = newLeftPercent.toFixed(1) + '%';
+                if (inpTop) inpTop.value = newTopPx.toFixed(0) + 'px';
+            } else if (dragFreeState.elementType === 'gallery-item') {
+                const idx = dragFreeState.galleryIndex;
+                const inpLeft = domInspector.querySelector(`.gallery-item-left[data-index="${idx}"]`);
+                const inpTop = domInspector.querySelector(`.gallery-item-top[data-index="${idx}"]`);
+                if (inpLeft) inpLeft.value = newLeftPercent.toFixed(1) + '%';
+                if (inpTop) inpTop.value = newTopPx.toFixed(0) + 'px';
+            }
+        }
+
+        function stopFreeElementDrag(e) {
+            if (!dragFreeState.isDragging) return;
+            
+            document.removeEventListener('mousemove', handleFreeElementDrag);
+            document.removeEventListener('mouseup', stopFreeElementDrag);
+            
+            const block = dragFreeState.block;
+            if (block) {
+                const finalLeft = dragFreeState.element.style.left;
+                const finalTop = dragFreeState.element.style.top;
+                
+                if (dragFreeState.elementType === 'freeform-image') {
+                    block.content.imgLeft = finalLeft;
+                    block.content.imgTop = finalTop;
+                } else if (dragFreeState.elementType === 'freeform-text') {
+                    block.content.textLeft = finalLeft;
+                    block.content.textTop = finalTop;
+                } else if (dragFreeState.elementType === 'gallery-item') {
+                    const idx = dragFreeState.galleryIndex;
+                    if (block.content.items[idx]) {
+                        block.content.items[idx].left = finalLeft;
+                        block.content.items[idx].top = finalTop;
+                    }
+                }
+                
+                saveDraft();
+                
+                if (state.selectedBlockId === block.id) {
+                    renderInspectorProperties(block);
+                }
+            }
+            
+            dragFreeState.isDragging = false;
+            // Set flag to prevent the subsequent click event from triggering upload
+            window._wasDragging = true;
+            setTimeout(() => { window._wasDragging = false; }, 300);
+        }
+
+        // Global canvas click delegator (photo uploads, resize handle downs, and free arrangement drags)
+        domCanvas.addEventListener('mousedown', (e) => {
+            // First check if user clicked on a resize handle
+            const resizeHandle = e.target.closest('.image-resize-handle');
+            if (resizeHandle) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const wrapper = e.target.closest('.resizable-image-wrapper') || e.target.closest('[data-action="canvas-upload"]') || e.target.closest('.gallery-item-free-wrapper');
+                if (!wrapper) return;
+                
+                const blockWrapper = wrapper.closest('.newsletter-block-wrapper');
+                if (!blockWrapper) return;
+                
+                const blockId = blockWrapper.getAttribute('data-block-id');
+                const page = state.pages.find(p => p.id === state.selectedPageId);
+                const block = page?.blocks.find(b => b.id === blockId);
+                if (!block) return;
+                
+                const rect = wrapper.getBoundingClientRect();
+                const parentRect = wrapper.parentElement.getBoundingClientRect();
+                const img = wrapper.querySelector('img') || wrapper.querySelector('svg');
+                
+                resizeState = {
+                    isResizing: true,
+                    blockId: block.id,
+                    initialX: e.clientX,
+                    initialY: e.clientY,
+                    initialWidth: rect.width,
+                    initialHeight: rect.height,
+                    imgElement: img,
+                    wrapperElement: wrapper,
+                    containerWidth: parentRect.width || 560
+                };
+                
+                document.addEventListener('mousemove', handleImageResize);
+                document.addEventListener('mouseup', stopImageResize);
+                return;
+            }
+            
+            // Check if user clicked on a draggable free positioning element (image, text or gallery card)
+            const dragElem = e.target.closest('.draggable-free-element');
+            if (dragElem) {
+                // Prevent drag initiation on input elements / contenteditable fields
+                if (e.target.closest('input') || e.target.closest('[contenteditable="true"]')) {
+                    return;
+                }
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const blockId = dragElem.getAttribute('data-block-id');
+                const page = state.pages.find(p => p.id === state.selectedPageId);
+                const block = page?.blocks.find(b => b.id === blockId);
+                if (!block) return;
+                
+                // Select block (inline, without re-rendering canvas which would destroy the element mid-drag)
+                if (state.selectedBlockId !== block.id) {
+                    state.selectedBlockId = block.id;
+                    document.querySelectorAll('.newsletter-block-wrapper.selected').forEach(w => w.classList.remove('selected'));
+                    const bw = dragElem.closest('.newsletter-block-wrapper');
+                    if (bw) bw.classList.add('selected');
+                    renderInspectorProperties(block);
+                }
+                
+                const type = dragElem.getAttribute('data-type');
+                const index = dragElem.getAttribute('data-index');
+                
+                const rect = dragElem.getBoundingClientRect();
+                const parentElement = dragElem.offsetParent || dragElem.parentElement;
+                const parentRect = parentElement.getBoundingClientRect();
+                
+                const currentLeftPct = parseFloat(dragElem.style.left) || 0;
+                const currentTopPx = parseFloat(dragElem.style.top) || 0;
+                
+                dragFreeState = {
+                    isDragging: true,
+                    blockId: block.id,
+                    elementType: type,
+                    galleryIndex: index ? parseInt(index) : null,
+                    initialX: e.clientX,
+                    initialY: e.clientY,
+                    initialLeft: currentLeftPct,
+                    initialTop: currentTopPx,
+                    containerRect: parentRect,
+                    element: dragElem,
+                    block: block
+                };
+                
+                document.addEventListener('mousemove', handleFreeElementDrag);
+                document.addEventListener('mouseup', stopFreeElementDrag);
+            }
+        });
+
         // LEFT SIDEBAR TABS SELECTION
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -5011,26 +6536,58 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             });
         });
 
+        // RESPONSIVE PREVIEW MODE TOGGLES
+        document.querySelectorAll('.preview-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const toggles = document.querySelectorAll('.preview-toggle-btn');
+                toggles.forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const mode = btn.getAttribute('data-mode');
+                const canvas = document.getElementById('newsletter-document-canvas');
+                if (canvas) {
+                    canvas.classList.remove('view-desktop', 'view-tablet', 'view-mobile');
+                    canvas.classList.add(`view-${mode}`);
+                }
+            });
+        });
+
         // WYSIWYG POPUP FORMATTING TOOLBAR
         let selectedRange = null;
         const textToolbar = document.getElementById('text-format-toolbar');
 
         domCanvas.addEventListener('mouseup', handleTextSelection);
         domCanvas.addEventListener('keyup', handleTextSelection);
+        document.addEventListener('selectionchange', handleTextSelection);
 
         function handleTextSelection() {
             const sel = window.getSelection();
             if (sel.rangeCount > 0 && !sel.isCollapsed && sel.toString().trim() !== '') {
                 selectedRange = sel.getRangeAt(0);
-                const rect = selectedRange.getBoundingClientRect();
                 
-                textToolbar.style.top = `${rect.top + window.scrollY - 36}px`;
-                textToolbar.style.left = `${rect.left + window.scrollX + (rect.width / 2) - 60}px`;
-                textToolbar.style.visibility = 'visible';
-                textToolbar.style.opacity = '1';
+                // Verify the selection is inside the canvas editor
+                const parent = selectedRange.commonAncestorContainer.nodeType === 3
+                    ? selectedRange.commonAncestorContainer.parentNode
+                    : selectedRange.commonAncestorContainer;
+                
+                if (!domCanvas.contains(parent)) {
+                    textToolbar.classList.remove('active');
+                    return;
+                }
+
+                const rect = selectedRange.getBoundingClientRect();
+                const scrollContainer = document.getElementById('viewport-scroll-area');
+                const scrollContainerRect = scrollContainer.getBoundingClientRect();
+
+                // Compute relative positioning
+                const top = rect.top + scrollContainer.scrollTop - scrollContainerRect.top - 48;
+                const left = rect.left + scrollContainer.scrollLeft - scrollContainerRect.left + (rect.width / 2) - 80;
+
+                textToolbar.style.top = `${Math.max(10, top)}px`;
+                textToolbar.style.left = `${Math.max(10, left)}px`;
+                textToolbar.classList.add('active');
             } else {
-                textToolbar.style.visibility = 'hidden';
-                textToolbar.style.opacity = '0';
+                textToolbar.classList.remove('active');
             }
         }
 
@@ -5047,13 +6604,24 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                 
                 // Save updated edits
                 const activeEl = document.activeElement;
-                if (activeEl && activeEl.classList.contains('editable-text-field')) {
-                    const blockId = activeEl.closest('.newsletter-block-wrapper').getAttribute('data-block-id');
-                    const page = state.pages.find(p => p.id === state.selectedPageId);
-                    const block = page?.blocks.find(b => b.id === blockId);
-                    if (block) {
-                        block.content.text = activeEl.innerHTML;
-                        saveDraft();
+                if (activeEl) {
+                    const wrapper = activeEl.closest('.newsletter-block-wrapper');
+                    if (wrapper) {
+                        const blockId = wrapper.getAttribute('data-block-id');
+                        const page = state.pages.find(p => p.id === state.selectedPageId);
+                        const block = page?.blocks.find(b => b.id === blockId);
+                        if (block) {
+                            if (activeEl.classList.contains('editable-text-field')) {
+                                block.content.text = activeEl.innerHTML;
+                            } else if (activeEl.classList.contains('editable-gallery-caption')) {
+                                const index = parseInt(activeEl.getAttribute('data-index'));
+                                if (block.content.items && block.content.items[index]) {
+                                    block.content.items[index].caption = activeEl.innerHTML;
+                                }
+                            }
+                            saveDraft();
+                            runAuditChecks();
+                        }
                     }
                 }
             });
@@ -5067,9 +6635,360 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             }
         }, 60000);
 
+        // REVISION SNAPSHOT HISTORY
+        function createRevisionSnapshot(label = 'Manual Snapshot') {
+            try {
+                let revisions = JSON.parse(localStorage.getItem('pro_craftletter_studio_revisions') || '[]');
+                const snapshot = {
+                    timestamp: new Date().toISOString(),
+                    label: label,
+                    state: JSON.parse(JSON.stringify(state))
+                };
+                revisions.unshift(snapshot);
+                if (revisions.length > 15) {
+                    revisions = revisions.slice(0, 15);
+                }
+                localStorage.setItem('pro_craftletter_studio_revisions', JSON.stringify(revisions));
+                renderRevisionHistoryUI();
+            } catch (e) {
+                console.error('Failed to create snapshot:', e);
+            }
+        }
+
+        function renderRevisionHistoryUI() {
+            const container = document.getElementById('revisions-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            try {
+                const revisions = JSON.parse(localStorage.getItem('pro_craftletter_studio_revisions') || '[]');
+                if (revisions.length === 0) {
+                    container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center; padding: 20px 0;">No snapshots saved yet. Click "+ Save Snapshot" to save current layout state.</div>';
+                    return;
+                }
+                
+                revisions.forEach((snapshot, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'page-list-item';
+                    item.style.flexDirection = 'column';
+                    item.style.alignItems = 'stretch';
+                    item.style.gap = '4px';
+                    
+                    const timeStr = new Date(snapshot.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const dateStr = new Date(snapshot.timestamp).toLocaleDateString();
+                    
+                    item.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:600; font-size:12px; color:white; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${snapshot.label}</span>
+                            <button class="btn-mini restore-snapshot-btn" data-index="${index}" style="color:#06b6d4; font-weight:700; font-size:11px; background:none; border:none; cursor:pointer;">Restore</button>
+                        </div>
+                        <div style="font-size:10px; color:var(--text-muted);">${timeStr} - ${dateStr}</div>
+                    `;
+                    
+                    item.querySelector('.restore-snapshot-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Restore to snapshot "${snapshot.label}"? Any unsaved edits on your current page will be lost.`)) {
+                            // Save current state first as a backup before restoring
+                            createRevisionSnapshot('Backup before restore');
+                            
+                            // Restore state
+                            state = JSON.parse(JSON.stringify(snapshot.state));
+                            saveDraft();
+                            renderUI();
+                            showToast(`Restored layout "${snapshot.label}"!`);
+                        }
+                    };
+                    
+                    container.appendChild(item);
+                });
+            } catch (e) {
+                console.error('Failed to render revisions UI:', e);
+            }
+        }
+
+        // Bind Save Snapshot Button
+        const btnSaveSnapshot = document.getElementById('btn-create-snapshot');
+        if (btnSaveSnapshot) {
+            btnSaveSnapshot.onclick = () => {
+                const desc = prompt('Enter a label/description for this layout snapshot:', `Snapshot ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+                if (desc === null) return; // Cancelled
+                const finalLabel = desc.trim() || 'Manual Snapshot';
+                createRevisionSnapshot(finalLabel);
+                showToast('Snapshot saved successfully!');
+            };
+        }
+
+        // CUSTOM BRAND THEME BUILDER
+        function syncCustomThemeInputs() {
+            const theme = state.customTheme || { primary: '#003B70', accent: '#D92626', bgLight: '#F4F6F9', textDark: '#333333' };
+            const inpPrimary = document.getElementById('inp-custom-primary');
+            const inpPrimaryText = document.getElementById('inp-custom-primary-text');
+            const inpAccent = document.getElementById('inp-custom-accent');
+            const inpAccentText = document.getElementById('inp-custom-accent-text');
+            const inpCard = document.getElementById('inp-custom-card');
+            const inpCardText = document.getElementById('inp-custom-card-text');
+            const inpText = document.getElementById('inp-custom-text');
+            const inpTextText = document.getElementById('inp-custom-text-text');
+
+            if (inpPrimary) {
+                inpPrimary.value = theme.primary;
+                inpPrimaryText.value = theme.primary;
+                inpAccent.value = theme.accent;
+                inpAccentText.value = theme.accent;
+                inpCard.value = theme.bgLight;
+                inpCardText.value = theme.bgLight;
+                inpText.value = theme.textDark;
+                inpTextText.value = theme.textDark;
+            }
+        }
+
+        function bindCustomThemePickers() {
+            const syncPicker = (pickerId, textId, prop) => {
+                const picker = document.getElementById(pickerId);
+                const text = document.getElementById(textId);
+                if (!picker || !text) return;
+                
+                picker.oninput = (e) => {
+                    text.value = e.target.value;
+                    if (!state.customTheme) state.customTheme = {};
+                    state.customTheme[prop] = e.target.value;
+                };
+                
+                text.oninput = (e) => {
+                    const val = e.target.value;
+                    if (val.match(/^#[0-9A-F]{6}$/i)) {
+                        picker.value = val;
+                        if (!state.customTheme) state.customTheme = {};
+                        state.customTheme[prop] = val;
+                    }
+                };
+            };
+            
+            syncPicker('inp-custom-primary', 'inp-custom-primary-text', 'primary');
+            syncPicker('inp-custom-accent', 'inp-custom-accent-text', 'accent');
+            syncPicker('inp-custom-card', 'inp-custom-card-text', 'bgLight');
+            syncPicker('inp-custom-text', 'inp-custom-text-text', 'textDark');
+            
+            const btnApplyTheme = document.getElementById('btn-apply-custom-theme');
+            if (btnApplyTheme) {
+                btnApplyTheme.onclick = () => {
+                    state.activeThemeKey = 'custom';
+                    document.querySelectorAll('.preset-dot').forEach(dot => {
+                        dot.classList.toggle('active', dot.getAttribute('data-preset') === 'custom');
+                    });
+                    applyThemePresetColorsOnly('custom');
+                    saveDraft();
+                    renderUI();
+                    showToast('Applied custom brand colors!');
+                };
+            }
+        }
+
+        // PAGE MANAGER GRID MODAL CONTROLLER
+        let tempPages = [];
+
+        function openPageManager() {
+            const modal = document.getElementById('page-manager-modal');
+            if (!modal) return;
+            tempPages = JSON.parse(JSON.stringify(state.pages)); // Clone pages list
+            renderPageManagerGrid();
+            modal.classList.add('active');
+        }
+
+        function closePageManager() {
+            const modal = document.getElementById('page-manager-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function renderPageManagerGrid() {
+            const grid = document.getElementById('page-manager-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            tempPages.forEach((page, index) => {
+                const card = document.createElement('div');
+                card.className = 'page-manager-card';
+                card.draggable = true;
+                card.setAttribute('data-id', page.id);
+                card.setAttribute('data-index', index);
+                
+                card.style.cssText = `
+                    background: var(--bg-card);
+                    border: 2px solid ${page.id === state.selectedPageId ? 'var(--primary)' : 'var(--border-color)'};
+                    border-radius: 10px;
+                    padding: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    cursor: grab;
+                    user-select: none;
+                    transition: all 0.2s ease;
+                    position: relative;
+                `;
+                
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Page ${index + 1}</span>
+                        <div style="display: flex; gap: 4px;" class="no-print">
+                            <button class="btn btn-mini btn-move-up" data-index="${index}" style="padding: 2px 4px; font-size: 9px;" ${index === 0 ? 'disabled' : ''}>▲</button>
+                            <button class="btn btn-mini btn-move-down" data-index="${index}" style="padding: 2px 4px; font-size: 9px;" ${index === tempPages.length - 1 ? 'disabled' : ''}>▼</button>
+                        </div>
+                    </div>
+                    
+                    <input type="text" class="form-input page-title-input" data-index="${index}" value="${page.title}" style="font-size: 11px; padding: 6px 8px; width: 100%; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white;" placeholder="Page Title">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <button class="btn btn-mini btn-clone-page" data-index="${index}" style="padding: 4px 6px; font-size: 10px; background: rgba(255,255,255,0.02);" title="Duplicate page">Clone</button>
+                        <button class="btn btn-mini btn-delete-page" data-index="${index}" style="padding: 4px 6px; font-size: 10px; background: rgba(239,68,68,0.1); color: #f87171;" title="Delete page">Delete</button>
+                    </div>
+                `;
+                
+                // Bind up arrow button
+                card.querySelector('.btn-move-up')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (index > 0) {
+                        const temp = tempPages[index];
+                        tempPages[index] = tempPages[index - 1];
+                        tempPages[index - 1] = temp;
+                        renderPageManagerGrid();
+                    }
+                });
+                
+                // Bind down arrow button
+                card.querySelector('.btn-move-down')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (index < tempPages.length - 1) {
+                        const temp = tempPages[index];
+                        tempPages[index] = tempPages[index + 1];
+                        tempPages[index + 1] = temp;
+                        renderPageManagerGrid();
+                    }
+                });
+                
+                // Bind Title Input Change
+                card.querySelector('.page-title-input').addEventListener('input', (e) => {
+                    tempPages[index].title = e.target.value;
+                });
+                
+                // Bind Clone Page Action
+                card.querySelector('.btn-clone-page').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const clonedPage = JSON.parse(JSON.stringify(tempPages[index]));
+                    clonedPage.id = 'page-' + Math.random().toString(36).substr(2, 9);
+                    clonedPage.title = clonedPage.title + ' (Copy)';
+                    tempPages.splice(index + 1, 0, clonedPage);
+                    renderPageManagerGrid();
+                });
+                
+                // Bind Delete Page Action
+                card.querySelector('.btn-delete-page').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (tempPages.length <= 1) {
+                        alert('You must keep at least one page in your newsletter.');
+                        return;
+                    }
+                    if (confirm(`Are you sure you want to delete page ${index + 1}: "${page.title}"?`)) {
+                        tempPages.splice(index, 1);
+                        renderPageManagerGrid();
+                    }
+                });
+                
+                // DRAG AND DROP EVENT LISTENERS
+                card.addEventListener('dragstart', (e) => {
+                    card.style.opacity = '0.5';
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', index);
+                });
+                
+                card.addEventListener('dragend', () => {
+                    card.style.opacity = '1';
+                });
+                
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+                
+                card.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                    const toIndex = index;
+                    
+                    if (fromIndex !== toIndex && !isNaN(fromIndex)) {
+                        const movedItem = tempPages.splice(fromIndex, 1)[0];
+                        tempPages.splice(toIndex, 0, movedItem);
+                        renderPageManagerGrid();
+                    }
+                });
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // BIND PAGE MANAGER INTERFACES
+        const btnManagePages = document.getElementById('btn-manage-pages');
+        if (btnManagePages) btnManagePages.onclick = openPageManager;
+
+        const btnClosePageManager = document.getElementById('btn-close-page-manager');
+        if (btnClosePageManager) btnClosePageManager.onclick = closePageManager;
+
+        const btnPageManagerAdd = document.getElementById('btn-page-manager-add');
+        if (btnPageManagerAdd) {
+            btnPageManagerAdd.onclick = () => {
+                const nextNum = tempPages.length + 1;
+                const newP = createBlankPageObject(nextNum);
+                tempPages.push(newP);
+                renderPageManagerGrid();
+                
+                // Scroll to the bottom of the grid
+                const grid = document.getElementById('page-manager-grid');
+                if (grid) grid.scrollTop = grid.scrollHeight;
+            };
+        }
+
+        function createBlankPageObject(num) {
+            return {
+                id: 'page-' + Math.random().toString(36).substr(2, 9),
+                title: `Page ${num}: Announcements`,
+                bgColor: '#ffffff',
+                bgImage: '',
+                bgOpacity: 0.15,
+                bgSize: 'cover',
+                orientation: 'portrait',
+                blocks: [
+                    {
+                        id: 'b-default-' + num + '-' + Math.random().toString(36).substr(2, 5),
+                        type: 'article',
+                        content: { title: `Page ${num} Welcome`, subtitle: 'Category header', author: '', date: '', text: 'Select components from the left library blocks to populate this page.', imgUrl: '', imgPos: 'none' },
+                        styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'medium', borderRadius: '0', titleSize: '18px', textSize: '13px' }
+                    }
+                ]
+            };
+        }
+
+        const btnPageManagerSave = document.getElementById('btn-page-manager-save-close');
+        if (btnPageManagerSave) {
+            btnPageManagerSave.onclick = () => {
+                // Apply tempPages back to state
+                state.pages = tempPages;
+                
+                // If selected page is gone, reset selection to the first page
+                if (!state.pages.find(p => p.id === state.selectedPageId)) {
+                    state.selectedPageId = state.pages[0]?.id || '';
+                }
+                
+                saveDraft();
+                renderUI();
+                closePageManager();
+                showToast('Pages configuration saved successfully!');
+            };
+        }
+
         // INITIALIZE APP STATE
         window.onload = () => {
             loadDraft();
+            syncCustomThemeInputs();
+            bindCustomThemePickers();
             if (state.projectName) {
                 renderUI();
             } else {
