@@ -1605,11 +1605,7 @@
                 <div class="page-tabs-bar" id="page-tabs-container">
                     <!-- Dynamic Tabs -->
                 </div>
-                <div class="preview-mode-toggles" style="display: flex; gap: 4px; background: rgba(255,255,255,0.05); padding: 2px; border-radius: 6px; border: 1px solid var(--border-color); margin-left: auto; margin-right: 12px;">
-                    <button class="btn btn-mini preview-toggle-btn active" data-mode="desktop" style="padding: 4px 8px; font-size: 10px;" title="Desktop View (600px width)">Desktop</button>
-                    <button class="btn btn-mini preview-toggle-btn" data-mode="tablet" style="padding: 4px 8px; font-size: 10px;" title="Tablet View (480px width)">Tablet</button>
-                    <button class="btn btn-mini preview-toggle-btn" data-mode="mobile" style="padding: 4px 8px; font-size: 10px;" title="Mobile View (360px width)">Mobile</button>
-                </div>
+
                 <div style="font-size: 12px; color: var(--text-muted); display:flex; align-items:center; gap:6px;">
                     <span id="save-status">Saved</span>
                     <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:var(--success);"></span>
@@ -2445,6 +2441,74 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             }, 2500);
         }
 
+        // ═══════════════════════════════════════════════════════
+        // SECURITY: Sanitization Utilities
+        // ═══════════════════════════════════════════════════════
+
+        // Whitelist-based HTML sanitizer for contenteditable output.
+        // Allows basic formatting tags only; strips event handlers and scripts.
+        function sanitizeHTML(html) {
+            const allowedTags = ['B', 'I', 'U', 'STRONG', 'EM', 'BR', 'SPAN', 'SUB', 'SUP', 'S', 'MARK', 'A', 'P', 'DIV', 'UL', 'OL', 'LI'];
+            const div = document.createElement('div');
+            div.innerHTML = html;
+
+            function clean(node) {
+                const children = Array.from(node.childNodes);
+                children.forEach(child => {
+                    if (child.nodeType === 3) return; // text node — safe
+                    if (child.nodeType === 1) { // element node
+                        if (!allowedTags.includes(child.tagName)) {
+                            // Replace disallowed element with its text content
+                            const text = document.createTextNode(child.textContent);
+                            node.replaceChild(text, child);
+                            return;
+                        }
+                        // Strip all event-handler attributes (onclick, onerror, etc.)
+                        Array.from(child.attributes).forEach(attr => {
+                            const name = attr.name.toLowerCase();
+                            if (name.startsWith('on') || name === 'srcdoc' || name === 'src') {
+                                child.removeAttribute(attr.name);
+                            }
+                            // Strip javascript: URLs from href
+                            if (name === 'href' && /^\s*javascript\s*:/i.test(attr.value)) {
+                                child.setAttribute('href', '#');
+                            }
+                        });
+                        clean(child);
+                    } else {
+                        node.removeChild(child); // comments, processing instructions
+                    }
+                });
+            }
+
+            clean(div);
+            return div.innerHTML;
+        }
+
+        // HTML-escape for safe interpolation into template literals (export compiler)
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return str || '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Protocol-whitelist URL sanitizer for CTA buttons and links
+        function sanitizeUrl(url) {
+            if (!url || typeof url !== 'string') return '#';
+            const trimmed = url.trim();
+            // Block javascript:, data:, vbscript: protocols
+            if (/^\s*(javascript|data|vbscript)\s*:/i.test(trimmed)) return '#';
+            // Auto-prefix with https:// if no protocol
+            if (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(trimmed) && !trimmed.startsWith('mailto:')) {
+                return 'https://' + trimmed;
+            }
+            return trimmed;
+        }
+
         // SAVE & LOAD LOCAL DRAFT
         function saveDraft() {
             if (typeof createRevisionSnapshot === 'function') {
@@ -2886,15 +2950,37 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         function applyLoadedProject(jsonText, fileName, handle) {
             let parsed;
             try {
-                parsed = JSON.parse(jsonText);
+                parsed = JSON.parse(jsonText, (key, value) => {
+                    // Prevent prototype pollution
+                    if (key === '__proto__' || key === 'constructor') return undefined;
+                    return value;
+                });
             } catch (err) {
                 alert('Error reading project file: ' + err.message);
                 return;
             }
-            if (!parsed.projectName || !parsed.pages) {
+            if (!parsed || typeof parsed !== 'object' || !parsed.projectName || !Array.isArray(parsed.pages)) {
                 alert('Invalid project file. Make sure it is a valid .craftproject file.');
                 return;
             }
+            
+            // Deep sanitize editable fields to prevent XSS payloads stored in the file
+            function deepSanitize(obj) {
+                if (typeof obj !== 'object' || obj === null) return;
+                for (let key in obj) {
+                    if (typeof obj[key] === 'string') {
+                        if (key === 'text' || key === 'caption') {
+                            obj[key] = sanitizeHTML(obj[key]);
+                        } else if (key === 'url') {
+                            obj[key] = sanitizeUrl(obj[key]);
+                        }
+                    } else if (typeof obj[key] === 'object') {
+                        deepSanitize(obj[key]);
+                    }
+                }
+            }
+            deepSanitize(parsed);
+
             state = parsed;
             state.pages.forEach(p => { if (!p.orientation) p.orientation = 'portrait'; });
             document.querySelectorAll('.preset-dot').forEach(dot => {
@@ -3466,9 +3552,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: transparent; color: ${block.styles.color}; font-family: var(--heading-font); text-align: ${block.styles.alignment};">
                                     <tr>
                                         <td style="padding: 30px 20px; border-bottom: 4px solid ${block.styles.accentColor}; text-align: ${block.styles.alignment};">
-                                            <h1 style="margin: 0 0 6px 0; font-size: ${hSize}; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">${block.content.title}</h1>
-                                            <p style="margin: 0 0 10px 0; font-size: calc(13px * var(--font-scale)); opacity: 0.9; font-weight: 500;">${block.content.subtitle}</p>
-                                            <span style="font-size: calc(11px * var(--font-scale)); padding: 3px 10px; border-radius: 20px; background-color: rgba(255,255,255,0.15); display: inline-block;">${block.content.date}</span>
+                                            <h1 style="margin: 0 0 6px 0; font-size: ${hSize}; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">${escapeHtml(block.content.title)}</h1>
+                                            <p style="margin: 0 0 10px 0; font-size: calc(13px * var(--font-scale)); opacity: 0.9; font-weight: 500;">${escapeHtml(block.content.subtitle)}</p>
+                                            <span style="font-size: calc(11px * var(--font-scale)); padding: 3px 10px; border-radius: 20px; background-color: rgba(255,255,255,0.15); display: inline-block;">${escapeHtml(block.content.date)}</span>
                                         </td>
                                     </tr>
                                 </table>
@@ -3493,9 +3579,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                    </div>`;
                                 
                             const articleText = `
-                                <h2 style="margin: 0 0 6px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>
-                                ${block.content.subtitle ? `<p style="margin: 0 0 10px 0; font-family: var(--heading-font); font-size: calc(12px * var(--font-scale)); font-weight: 600; color: #4B5563; text-transform: uppercase; text-align: ${block.styles.alignment};">${block.content.subtitle}</p>` : ''}
-                                ${(block.content.author || block.content.date) ? `<p style="margin: 0 0 12px 0; font-size: calc(11px * var(--font-scale)); color:#6b7280; font-style:italic;">${block.content.author} ${block.content.date ? '• ' + block.content.date : ''}</p>` : ''}
+                                <h2 style="margin: 0 0 6px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${escapeHtml(block.content.title)}</h2>
+                                ${block.content.subtitle ? `<p style="margin: 0 0 10px 0; font-family: var(--heading-font); font-size: calc(12px * var(--font-scale)); font-weight: 600; color: #4B5563; text-transform: uppercase; text-align: ${block.styles.alignment};">${escapeHtml(block.content.subtitle)}</p>` : ''}
+                                ${(block.content.author || block.content.date) ? `<p style="margin: 0 0 12px 0; font-size: calc(11px * var(--font-scale)); color:#6b7280; font-style:italic;">${escapeHtml(block.content.author)} ${block.content.date ? '• ' + block.content.date : ''}</p>` : ''}
                                 <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};">${block.content.text}</div>
                             `;
 
@@ -3560,7 +3646,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 html = `
                                     ${fImgHtml}
                                     <div class="draggable-free-element" data-block-id="${block.id}" data-type="freeform-text" style="position: absolute; left: ${block.content.textLeft}; top: ${block.content.textTop}; width: ${block.content.textWidth}; text-align: ${block.styles.alignment}; z-index: 5;">
-                                        ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                        ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${escapeHtml(block.content.title)}</h2>` : ''}
                                         <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};" contenteditable="true">${block.content.text}</div>
                                     </div>
                                 `;
@@ -3569,7 +3655,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 blockContent.style.minHeight = '';
                                 const leftLayout = block.content.imgPos === 'left' || block.content.imgPos === 'top';
                                 const freeformText = `
-                                    ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                    ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${escapeHtml(block.content.title)}</h2>` : ''}
                                     <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};" contenteditable="true">${block.content.text}</div>
                                 `;
                                 html = `
@@ -3588,7 +3674,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 blockContent.style.position = '';
                                 blockContent.style.minHeight = '';
                                 const freeformText = `
-                                    ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                    ${block.content.title ? `<h2 style="margin: 0 0 8px 0; font-family: var(--heading-font); font-size: ${hSize}; font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${escapeHtml(block.content.title)}</h2>` : ''}
                                     <div class="editable-text-field" style="font-family: var(--body-font); font-size: ${bSize}; line-height: 1.6; text-align: ${block.styles.alignment};" contenteditable="true">${block.content.text}</div>
                                 `;
                                 if (block.content.imgPos === 'none') {
@@ -3664,7 +3750,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                                 html = `
                                     <div style="font-family: var(--body-font); width: 100%; height: 100%;">
-                                        ${block.content.heading ? `<div style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</div>` : ''}
+                                        ${block.content.heading ? `<div style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</div>` : ''}
                                         <div style="position: relative; width: 100%; height: calc(100% - 30px); min-height: ${parseInt(block.styles.blockHeight || 400) - 30}px;">
                                             ${cardsHtml}
                                         </div>
@@ -3700,7 +3786,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                                 html = `
                                     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
-                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                         <tr>
                                             <td>
                                                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -3751,7 +3837,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                                 html = `
                                     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
-                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                         <tr>
                                             <td>
                                                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -3790,10 +3876,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                             <tr><td align="center" style="padding: 18px 10px 6px 10px;">
                                                 ${photoHtml}
                                                 ${itemIcon}
-                                                <div style="font-size:calc(14px * var(--font-scale));font-weight:800;color:#111827;margin-top:2px;">${item.name}</div>
-                                                <div style="font-size:calc(11px * var(--font-scale));font-weight:700;color:${block.styles.titleColor||'#3b82f6'};text-transform:uppercase;margin-top:2px;letter-spacing:0.5px;">${item.title}</div>
+                                                <div style="font-size:calc(14px * var(--font-scale));font-weight:800;color:#111827;margin-top:2px;">${escapeHtml(item.name)}</div>
+                                                <div style="font-size:calc(11px * var(--font-scale));font-weight:700;color:${block.styles.titleColor||'#3b82f6'};text-transform:uppercase;margin-top:2px;letter-spacing:0.5px;">${escapeHtml(item.title)}</div>
                                             </td></tr>
-                                            <tr><td style="padding:0 12px 16px 12px;font-size:calc(12px * var(--font-scale));line-height:1.5;color:${block.styles.textColor||'#4b5563'};text-align:center;">${item.desc}</td></tr>
+                                            <tr><td style="padding:0 12px 16px 12px;font-size:calc(12px * var(--font-scale));line-height:1.5;color:${block.styles.textColor||'#4b5563'};text-align:center;">${escapeHtml(item.desc)}</td></tr>
                                         </table>
                                     </td>
                                 `;
@@ -3808,7 +3894,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                             html = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 10px 14px 10px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                     <tr>
                                         <td>
                                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -3827,8 +3913,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 bdaysHtml += `
                                     <div style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; display:flex; align-items:center; font-size:calc(12px * var(--font-scale));">
                                         ${icon}
-                                        <strong style="color:#111827; margin-left:4px;">${b.name}</strong>
-                                        <span style="color:#6b7280; margin-left:auto;">${b.date}</span>
+                                        <strong style="color:#111827; margin-left:4px;">${escapeHtml(b.name)}</strong>
+                                        <span style="color:#6b7280; margin-left:auto;">${escapeHtml(b.date)}</span>
                                     </div>
                                 `;
                             });
@@ -3842,8 +3928,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 annivHtml += `
                                     <div style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; display:flex; align-items:center; font-size:calc(12px * var(--font-scale));">
                                         ${icon}
-                                        <strong style="color:#111827; margin-left:4px;">${a.name}</strong>
-                                        <span style="color:${block.styles.titleColor || '#3B82F6'}; font-weight:700; margin-left:auto;">${a.details}</span>
+                                        <strong style="color:#111827; margin-left:4px;">${escapeHtml(a.name)}</strong>
+                                        <span style="color:${block.styles.titleColor || '#3B82F6'}; font-weight:700; margin-left:auto;">${escapeHtml(a.details)}</span>
                                     </div>
                                 `;
                             });
@@ -3853,7 +3939,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                             html = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 16px 20px 16px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td colspan="3" style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                    ${block.content.heading ? `<tr><td colspan="3" style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                     <tr>
                                         <td width="46%" valign="top">
                                             <div style="font-size:calc(11px * var(--font-scale)); font-weight:800; color:${block.styles.titleColor || '#3b82f6'}; border-bottom:2px solid ${block.styles.titleColor || '#3b82f6'}; padding-bottom:4px; text-transform:uppercase;">Birthdays</div>
@@ -3878,7 +3964,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                             <span style="font-size:36px; font-family:Georgia, serif; line-height:0; color: ${block.styles.color}; font-weight:bold; vertical-align:-12px; display:inline-block; margin-right:4px;">“</span>
                                             <span style="font-size:${qSize}; font-style:italic; font-weight:500; color: ${block.styles.color}; line-height: 1.5; display:inline;">${block.content.text}</span>
                                             <span style="font-size:36px; font-family:Georgia, serif; line-height:0; color: ${block.styles.color}; font-weight:bold; vertical-align:-20px; display:inline-block; margin-left:4px;">”</span>
-                                            <div style="margin-top: 8px; font-size:calc(11px * var(--font-scale)); font-weight:bold; color: #4B5563; text-transform:uppercase; letter-spacing:0.5px;">${block.content.author}</div>
+                                            <div style="margin-top: 8px; font-size:calc(11px * var(--font-scale)); font-weight:bold; color: #4B5563; text-transform:uppercase; letter-spacing:0.5px;">${escapeHtml(block.content.author)}</div>
                                         </td>
                                     </tr>
                                 </table>
@@ -3896,8 +3982,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                             ${index < block.content.items.length - 1 ? `<div style="width: 2px; height: 35px; background-color: #E5E7EB; margin-top: 2px;"></div>` : ''}
                                         </td>
                                         <td width="74%" valign="top" style="font-size: calc(13px * var(--font-scale)); color: #111827; padding-bottom: 12px; line-height:1.4;">
-                                            <strong style="display:block; font-size:calc(12px * var(--font-scale)); text-transform:uppercase; color:#374151;">${item.title}</strong>
-                                            <span style="font-size:calc(12px * var(--font-scale)); color:#6B7280;">${item.desc}</span>
+                                            <strong style="display:block; font-size:calc(12px * var(--font-scale)); text-transform:uppercase; color:#374151;">${escapeHtml(item.title)}</strong>
+                                            <span style="font-size:calc(12px * var(--font-scale)); color:#6B7280;">${escapeHtml(item.desc)}</span>
                                         </td>
                                     </tr>
                                 `;
@@ -3908,7 +3994,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                             html = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 24px 20px 24px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                     <tr>
                                         <td>
                                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -3964,9 +4050,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     const editable = blockContent.querySelector('.editable-text-field');
                     if (editable) {
                         editable.addEventListener('blur', (e) => {
-                            block.content.text = e.target.innerHTML;
+                            block.content.text = sanitizeHTML(e.target.innerHTML);
                             saveDraft();
                             runAuditChecks();
+                        });
+                        // Security: strip pasted HTML to safe formatting only
+                        editable.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const text = e.clipboardData.getData('text/plain');
+                            document.execCommand('insertText', false, text);
                         });
                     }
 
@@ -3975,10 +4067,16 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         c.addEventListener('blur', (e) => {
                             const index = parseInt(e.target.getAttribute('data-index'));
                             if (block.content.items[index]) {
-                                block.content.items[index].caption = e.target.textContent;
+                                block.content.items[index].caption = sanitizeHTML(e.target.textContent);
                                 saveDraft();
                                 runAuditChecks();
                             }
+                        });
+                        // Security: strip pasted HTML to safe formatting only
+                        c.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const text = e.clipboardData.getData('text/plain');
+                            document.execCommand('insertText', false, text);
                         });
                     });
                 });
@@ -4296,6 +4394,17 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             const file = e.target.files[0];
             if (!file) return;
 
+            // Security: validate file size (max 5 MB) and MIME type
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image file is too large. Maximum allowed size is 5 MB.');
+                e.target.value = '';
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                alert('Invalid file type. Please select an image file.');
+                e.target.value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
@@ -4386,7 +4495,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     controls = `
                         <div class="form-group">
                             <label class="form-label">Hero Title</label>
-                            <input type="text" class="form-input" id="inp-hero-title" value="${block.content.title}">
+                            <input type="text" class="form-input" id="inp-hero-title" value="${escapeHtml(block.content.title)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Title Font Size</label>
@@ -4397,11 +4506,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         </div>
                         <div class="form-group">
                             <label class="form-label">Hero Subtitle</label>
-                            <input type="text" class="form-input" id="inp-hero-subtitle" value="${block.content.subtitle}">
+                            <input type="text" class="form-input" id="inp-hero-subtitle" value="${escapeHtml(block.content.subtitle)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Issue Date / Label</label>
-                            <input type="text" class="form-input" id="inp-hero-date" value="${block.content.date}">
+                            <input type="text" class="form-input" id="inp-hero-date" value="${escapeHtml(block.content.date)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Text Alignment</label>
@@ -4439,7 +4548,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     controls = `
                         <div class="form-group">
                             <label class="form-label">Article Title</label>
-                            <input type="text" class="form-input" id="inp-art-title" value="${block.content.title}">
+                            <input type="text" class="form-input" id="inp-art-title" value="${escapeHtml(block.content.title)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Title Font Size</label>
@@ -4450,15 +4559,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         </div>
                         <div class="form-group">
                             <label class="form-label">Subtitle / Section Label</label>
-                            <input type="text" class="form-input" id="inp-art-sub" value="${block.content.subtitle}">
+                            <input type="text" class="form-input" id="inp-art-sub" value="${escapeHtml(block.content.subtitle)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Author Name</label>
-                            <input type="text" class="form-input" id="inp-art-author" value="${block.content.author}">
+                            <input type="text" class="form-input" id="inp-art-author" value="${escapeHtml(block.content.author)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Date Published</label>
-                            <input type="text" class="form-input" id="inp-art-date" value="${block.content.date}">
+                            <input type="text" class="form-input" id="inp-art-date" value="${escapeHtml(block.content.date)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Body Text (HTML enabled)</label>
@@ -4614,7 +4723,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         ${freeLayoutSliders}
                         <div class="form-group">
                             <label class="form-label">Section Heading</label>
-                            <input type="text" class="form-input" id="inp-gal-heading" value="${block.content.heading}">
+                            <input type="text" class="form-input" id="inp-gal-heading" value="${escapeHtml(block.content.heading)}">
                         </div>
                         <div class="form-group" style="${galLayout !== 'grid' ? 'display:none;' : ''}">
                             <label class="form-label">Columns Count</label>
@@ -4674,15 +4783,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 </div>
                                 <div class="form-group" style="margin-bottom:6px;">
                                     <label class="form-label">Colleague Name</label>
-                                    <input type="text" class="form-input award-item-name" data-index="${index}" value="${item.name}">
+                                    <input type="text" class="form-input award-item-name" data-index="${index}" value="${escapeHtml(item.name)}">
                                 </div>
                                 <div class="form-group" style="margin-bottom:6px;">
                                     <label class="form-label">Award Title</label>
-                                    <input type="text" class="form-input award-item-title" data-index="${index}" value="${item.title}">
+                                    <input type="text" class="form-input award-item-title" data-index="${index}" value="${escapeHtml(item.title)}">
                                 </div>
                                 <div class="form-group" style="margin-bottom:6px;">
                                     <label class="form-label">Description</label>
-                                    <textarea class="form-input award-item-desc" style="height:50px; resize:none;" data-index="${index}">${item.desc}</textarea>
+                                    <textarea class="form-input award-item-desc" style="height:50px; resize:none;" data-index="${index}">${escapeHtml(item.desc)}</textarea>
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">Badge Icon Type</label>
@@ -4700,7 +4809,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     controls = `
                         <div class="form-group">
                             <label class="form-label">Section Title</label>
-                            <input type="text" class="form-input" id="inp-aw-heading" value="${block.content.heading}">
+                            <input type="text" class="form-input" id="inp-aw-heading" value="${escapeHtml(block.content.heading)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Columns</label>
@@ -4744,8 +4853,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                     <button class="btn-mini remove-bday-item" data-index="${index}" style="color:var(--danger)">✕</button>
                                 </div>
                                 <div style="display:flex; gap:6px;">
-                                    <input type="text" class="form-input bday-item-name" style="flex:2;" data-index="${index}" value="${b.name}" placeholder="Name">
-                                    <input type="text" class="form-input bday-item-date" style="flex:1;" data-index="${index}" value="${b.date}" placeholder="Date">
+                                    <input type="text" class="form-input bday-item-name" style="flex:2;" data-index="${index}" value="${escapeHtml(b.name)}" placeholder="Name">
+                                    <input type="text" class="form-input bday-item-date" style="flex:1;" data-index="${index}" value="${escapeHtml(b.date)}" placeholder="Date">
                                 </div>
                             </div>
                         `;
@@ -4760,8 +4869,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                     <button class="btn-mini remove-anniv-item" data-index="${index}" style="color:var(--danger)">✕</button>
                                 </div>
                                 <div style="display:flex; gap:6px;">
-                                    <input type="text" class="form-input anniv-item-name" style="flex:1;" data-index="${index}" value="${a.name}" placeholder="Name">
-                                    <input type="text" class="form-input anniv-item-details" style="flex:1;" data-index="${index}" value="${a.details}" placeholder="Years">
+                                    <input type="text" class="form-input anniv-item-name" style="flex:1;" data-index="${index}" value="${escapeHtml(a.name)}" placeholder="Name">
+                                    <input type="text" class="form-input anniv-item-details" style="flex:1;" data-index="${index}" value="${escapeHtml(a.details)}" placeholder="Years">
                                 </div>
                             </div>
                         `;
@@ -4770,7 +4879,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     controls = `
                         <div class="form-group">
                             <label class="form-label">Section Heading</label>
-                            <input type="text" class="form-input" id="inp-cel-heading" value="${block.content.heading}">
+                            <input type="text" class="form-input" id="inp-cel-heading" value="${escapeHtml(block.content.heading)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Title Colors</label>
@@ -4816,7 +4925,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         </div>
                         <div class="form-group">
                             <label class="form-label">Author / Reference</label>
-                            <input type="text" class="form-input" id="inp-q-author" value="${block.content.author}">
+                            <input type="text" class="form-input" id="inp-q-author" value="${escapeHtml(block.content.author)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Alignment</label>
@@ -4853,11 +4962,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 </div>
                                 <div class="form-group" style="margin-bottom:6px;">
                                     <label class="form-label">Title</label>
-                                    <input type="text" class="form-input timeline-item-title" data-index="${index}" value="${item.title}">
+                                    <input type="text" class="form-input timeline-item-title" data-index="${index}" value="${escapeHtml(item.title)}">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0;">
                                     <label class="form-label">Description</label>
-                                    <input type="text" class="form-input timeline-item-desc" data-index="${index}" value="${item.desc}">
+                                    <input type="text" class="form-input timeline-item-desc" data-index="${index}" value="${escapeHtml(item.desc)}">
                                 </div>
                             </div>
                         `;
@@ -4866,7 +4975,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     controls = `
                         <div class="form-group">
                             <label class="form-label">Section Heading</label>
-                            <input type="text" class="form-input" id="inp-tm-heading" value="${block.content.heading}">
+                            <input type="text" class="form-input" id="inp-tm-heading" value="${escapeHtml(block.content.heading)}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Timeline Accent Color</label>
@@ -5793,9 +5902,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: transparent; color: ${block.styles.color}; font-family: var(--heading-font); text-align: ${block.styles.alignment};">
                                     <tr>
                                         <td align="${block.styles.alignment}" style="padding: 30px 20px; border-bottom: 4px solid ${block.styles.accentColor}; text-align: ${block.styles.alignment};">
-                                            <h1 style="margin: 0 0 6px 0; font-size: ${hSize}; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color:#ffffff;">${block.content.title}</h1>
-                                            <p style="margin: 0 0 10px 0; font-size: calc(13px * var(--font-scale)); opacity: 0.9; font-weight: 500; color:#ffffff;">${block.content.subtitle}</p>
-                                            <span style="font-size: calc(11px * var(--font-scale)); padding: 3px 10px; border-radius: 20px; background-color: rgba(255,255,255,0.15); display: inline-block; color:#ffffff;">${block.content.date}</span>
+                                            <h1 style="margin: 0 0 6px 0; font-size: ${hSize}; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color:#ffffff;">${escapeHtml(block.content.title)}</h1>
+                                            <p style="margin: 0 0 10px 0; font-size: calc(13px * var(--font-scale)); opacity: 0.9; font-weight: 500; color:#ffffff;">${escapeHtml(block.content.subtitle)}</p>
+                                            <span style="font-size: calc(11px * var(--font-scale)); padding: 3px 10px; border-radius: 20px; background-color: rgba(255,255,255,0.15); display: inline-block; color:#ffffff;">${escapeHtml(block.content.date)}</span>
                                         </td>
                                     </tr>
                                 </table>
@@ -5811,9 +5920,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 : `<div style="background-color:#e5e7eb; border-radius:6px; height:100px; line-height:100px; text-align:center; color:#4b5563; font-family:sans-serif; font-size:12px; font-weight:bold;">Image Placeholder</div>`;
                                 
                             const txtHTML = `
-                                <h2 style="margin: 0 0 6px 0; font-size: ${hSize}; font-family: var(--heading-font); font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>
-                                ${block.content.subtitle ? `<p style="margin: 0 0 10px 0; font-family: var(--heading-font); font-size: calc(12px * var(--font-scale)); font-weight: 600; color: #4B5563; text-transform: uppercase; text-align: ${block.styles.alignment};">${block.content.subtitle}</p>` : ''}
-                                ${(block.content.author || block.content.date) ? `<p style="margin: 0 0 12px 0; font-size: calc(11px * var(--font-scale)); color:#6b7280; font-style:italic;">${block.content.author} ${block.content.date ? '• ' + block.content.date : ''}</p>` : ''}
+                                <h2 style="margin: 0 0 6px 0; font-size: ${hSize}; font-family: var(--heading-font); font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${escapeHtml(block.content.title)}</h2>
+                                ${block.content.subtitle ? `<p style="margin: 0 0 10px 0; font-family: var(--heading-font); font-size: calc(12px * var(--font-scale)); font-weight: 600; color: #4B5563; text-transform: uppercase; text-align: ${block.styles.alignment};">${escapeHtml(block.content.subtitle)}</p>` : ''}
+                                ${(block.content.author || block.content.date) ? `<p style="margin: 0 0 12px 0; font-size: calc(11px * var(--font-scale)); color:#6b7280; font-style:italic;">${escapeHtml(block.content.author)} ${block.content.date ? '• ' + block.content.date : ''}</p>` : ''}
                                 <div style="font-size: ${bSize}; font-family: var(--body-font); line-height: 1.6; text-align: ${block.styles.alignment};">${block.content.text}</div>
                             `;
 
@@ -5867,7 +5976,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                                 blockHTML = `
                                     <div style="font-family: var(--body-font); width: 100%;">
-                                        ${block.content.heading ? `<div style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</div>` : ''}
+                                        ${block.content.heading ? `<div style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</div>` : ''}
                                         <div style="position: relative; width: 100%; min-height: ${block.styles.blockHeight || 400}px;">
                                             ${cardsHtmlComp}
                                         </div>
@@ -5894,7 +6003,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                                 blockHTML = `
                                     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
-                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                         <tr>
                                             <td>
                                                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -5935,7 +6044,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                                 blockHTML = `
                                     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 12px; font-family: var(--body-font);">
-                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                        ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                         <tr>
                                             <td>
                                                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -5962,14 +6071,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: ${block.styles.cardBg || '#f3f4f6'}; border-radius: 8px; border-top: 3px solid ${block.styles.titleColor || '#3B82F6'};">
                                             <tr>
                                                 <td align="center" style="padding: 14px 10px 6px 10px;">
-                                                    ${item.photoUrl ? `<img src="${item.photoUrl}" width="64" height="64" alt="${item.name}" style="width:64px; height:64px; border-radius:50%; display:block; margin:0 auto 8px auto; border:3px solid ${block.styles.titleColor||'#3B82F6'}; object-fit:cover;">` : ''}
-                                                    <div style="font-size: calc(14px * var(--font-scale)); font-weight: bold; color: #111827; margin-top: 2px;">${item.name}</div>
-                                                    <div style="font-size: calc(11px * var(--font-scale)); font-weight: bold; color: ${block.styles.titleColor || '#3b82f6'}; text-transform: uppercase; margin-top: 2px;">${item.title}</div>
+                                                    ${item.photoUrl ? `<img src="${item.photoUrl}" width="64" height="64" alt="${escapeHtml(item.name)}" style="width:64px; height:64px; border-radius:50%; display:block; margin:0 auto 8px auto; border:3px solid ${block.styles.titleColor||'#3B82F6'}; object-fit:cover;">` : ''}
+                                                    <div style="font-size: calc(14px * var(--font-scale)); font-weight: bold; color: #111827; margin-top: 2px;">${escapeHtml(item.name)}</div>
+                                                    <div style="font-size: calc(11px * var(--font-scale)); font-weight: bold; color: ${block.styles.titleColor || '#3b82f6'}; text-transform: uppercase; margin-top: 2px;">${escapeHtml(item.title)}</div>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td style="padding: 0 12px 14px 12px; font-size: calc(12px * var(--font-scale)); line-height: 1.4; color: ${block.styles.textColor || '#4b5563'}; text-align: center;">
-                                                    ${item.desc}
+                                                    ${escapeHtml(item.desc)}
                                                 </td>
                                             </tr>
                                         </table>
@@ -5986,7 +6095,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                             blockHTML = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 10px 14px 10px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                     <tr>
                                         <td>
                                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -6003,8 +6112,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             block.content.birthdays.forEach(b => {
                                 bdHTML += `
                                     <div style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; font-size:calc(12px * var(--font-scale));">
-                                        <strong style="color:#111827;">🎂 ${b.name}</strong>
-                                        <span style="color:#6b7280; float:right;">${b.date}</span>
+                                        <strong style="color:#111827;">🎂 ${escapeHtml(b.name)}</strong>
+                                        <span style="color:#6b7280; float:right;">${escapeHtml(b.date)}</span>
                                     </div>
                                 `;
                             });
@@ -6012,15 +6121,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             block.content.anniversaries.forEach(a => {
                                 anHTML += `
                                     <div style="padding: 6px 0; border-bottom: 1px solid #E5E7EB; font-size:calc(12px * var(--font-scale));">
-                                        <strong style="color:#111827;">⭐ ${a.name}</strong>
-                                        <span style="color:${block.styles.titleColor || '#3B82F6'}; font-weight:bold; float:right;">${a.details}</span>
+                                        <strong style="color:#111827;">⭐ ${escapeHtml(a.name)}</strong>
+                                        <span style="color:${block.styles.titleColor || '#3B82F6'}; font-weight:bold; float:right;">${escapeHtml(a.details)}</span>
                                     </div>
                                 `;
                             });
 
                             blockHTML = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 16px 20px 16px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td colspan="3" style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                    ${block.content.heading ? `<tr><td colspan="3" style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                     <tr>
                                         <td width="46%" valign="top">
                                             <div style="font-size:calc(11px * var(--font-scale)); font-weight:bold; color:${block.styles.titleColor || '#3b82f6'}; border-bottom:2px solid ${block.styles.titleColor || '#3b82f6'}; padding-bottom:4px; text-transform:uppercase;">Birthdays</div>
@@ -6045,7 +6154,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                             <span style="font-size:28px; font-family:Georgia, serif; color: ${block.styles.color}; font-weight:bold; vertical-align:-8px; line-height:0; display:inline-block; margin-right:4px;">“</span>
                                             <span style="font-size:${qTextSize}; font-style:italic; font-weight:500; color: ${block.styles.color}; line-height:1.5;">${block.content.text}</span>
                                             <span style="font-size:28px; font-family:Georgia, serif; color: ${block.styles.color}; font-weight:bold; vertical-align:-14px; line-height:0; display:inline-block; margin-left:4px;">”</span>
-                                            <div style="margin-top: 8px; font-size:calc(11px * var(--font-scale)); font-weight:bold; color: #4B5563; text-transform:uppercase; letter-spacing:0.5px;">${block.content.author}</div>
+                                            <div style="margin-top: 8px; font-size:calc(11px * var(--font-scale)); font-weight:bold; color: #4B5563; text-transform:uppercase; letter-spacing:0.5px;">${escapeHtml(block.content.author)}</div>
                                         </td>
                                     </tr>
                                 </table>
@@ -6062,8 +6171,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                             <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${block.styles.accentColor || '#D92626'}; margin-top: 4px;"></div>
                                         </td>
                                         <td width="74%" valign="top" style="font-size: calc(13px * var(--font-scale)); color: #111827; padding-bottom: 12px; line-height:1.4;">
-                                            <strong style="display:block; font-size:calc(12px * var(--font-scale)); text-transform:uppercase; color:#374151;">${item.title}</strong>
-                                            <span style="font-size:calc(12px * var(--font-scale)); color:#6B7280;">${item.desc}</span>
+                                            <strong style="display:block; font-size:calc(12px * var(--font-scale)); text-transform:uppercase; color:#374151;">${escapeHtml(item.title)}</strong>
+                                            <span style="font-size:calc(12px * var(--font-scale)); color:#6B7280;">${escapeHtml(item.desc)}</span>
                                         </td>
                                     </tr>
                                 `;
@@ -6071,7 +6180,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
                             blockHTML = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 10px 24px 20px 24px; font-family: var(--body-font);">
-                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${block.content.heading}</td></tr>` : ''}
+                                    ${block.content.heading ? `<tr><td style="font-family: var(--heading-font); font-size:calc(12px * var(--font-scale)); font-weight:800; color:#4B5563; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:12px; text-align:center;">${escapeHtml(block.content.heading)}</td></tr>` : ''}
                                     <tr>
                                         <td>
                                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -6084,9 +6193,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             break;
 
                         case 'cta-button': {
-                            const ctaUrlComp = block.content.url
-                                ? (/^[a-z][a-z0-9+\-.]*:\/\//i.test(block.content.url) ? block.content.url : 'https://' + block.content.url)
-                                : '#';
+                            const ctaUrlComp = sanitizeUrl(block.content.url);
                             blockHTML = `
                                 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: transparent; font-family: var(--heading-font);">
                                     <tr>
@@ -6128,7 +6235,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 : '';
                                 
                             const fTxtHTMLComp = `
-                                ${block.content.title ? `<h2 style="margin: 0 0 6px 0; font-size: ${hSize}; font-family: var(--heading-font); font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${block.content.title}</h2>` : ''}
+                                ${block.content.title ? `<h2 style="margin: 0 0 6px 0; font-size: ${hSize}; font-family: var(--heading-font); font-weight: bold; color: ${block.styles.color === '#ffffff' ? '#111827' : block.styles.color}; text-align: ${block.styles.alignment};">${escapeHtml(block.content.title)}</h2>` : ''}
                                 <div style="font-size: ${bSize}; font-family: var(--body-font); line-height: 1.6; text-align: ${block.styles.alignment};">${block.content.text}</div>
                             `;
 
@@ -6920,11 +7027,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                         const block = page?.blocks.find(b => b.id === blockId);
                         if (block) {
                             if (activeEl.classList.contains('editable-text-field')) {
-                                block.content.text = activeEl.innerHTML;
+                                block.content.text = sanitizeHTML(activeEl.innerHTML);
                             } else if (activeEl.classList.contains('editable-gallery-caption')) {
                                 const index = parseInt(activeEl.getAttribute('data-index'));
                                 if (block.content.items && block.content.items[index]) {
-                                    block.content.items[index].caption = activeEl.innerHTML;
+                                    block.content.items[index].caption = sanitizeHTML(activeEl.innerHTML);
                                 }
                             }
                             saveDraft();
