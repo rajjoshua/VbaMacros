@@ -1398,7 +1398,7 @@
             </div>
             <div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="logo-text" id="header-project-name" title="Click to rename project" style="cursor:pointer; border-bottom: 1px dashed rgba(255,255,255,0.3);" onclick="promptRenameProject()">GTS Newsletter Studio</span>
+                    <span class="logo-text" id="header-project-name">GTS Newsletter Studio</span>
                     <span class="logo-tag">Pro Engine</span>
                 </div>
                 <div class="header-file-status" id="header-file-status">
@@ -2421,16 +2421,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         }
 
         // Inline project rename
-        function promptRenameProject() {
-            const current = state.projectName || 'GTS Newsletter Studio';
-            const newName = prompt('Rename project:', current);
-            if (!newName || !newName.trim() || newName.trim() === current) return;
-            state.projectName = newName.trim();
-            document.getElementById('header-project-name').textContent = state.projectName;
-            saveDraft();
-            showToast('Project renamed to "' + state.projectName + '"');
-        }
-
         function showToast(text, type = 'success') {
             const toast = document.createElement('div');
             toast.style.position = 'fixed';
@@ -2525,7 +2515,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 if (!p.orientation) p.orientation = 'portrait';
                             });
                         }
-                        document.getElementById('header-project-name').textContent = state.projectName;
+                        document.getElementById('header-project-name').textContent = 'GTS Newsletter Studio';
                         startupModal.classList.remove('active');
                         applyThemePresetsUI();
                         applyGlobalTypographyUI();
@@ -2862,7 +2852,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                 window._loadedProjectFileName = suggestedName;
             }
 
-            document.getElementById('header-project-name').textContent = state.projectName;
             safeLocalStorageSet('pro_craftletter_studio_state', jsonStr);
             renderUI();
             updateFileStatus();
@@ -2908,7 +2897,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             }
             state = parsed;
             state.pages.forEach(p => { if (!p.orientation) p.orientation = 'portrait'; });
-            document.getElementById('header-project-name').textContent = state.projectName;
             document.querySelectorAll('.preset-dot').forEach(dot => {
                 dot.classList.toggle('active', dot.getAttribute('data-preset') === state.activeThemeKey);
             });
