@@ -1533,6 +1533,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                         <span>Free Text & Image</span>
                     </div>
+                    <div class="block-item" data-type="html-import" title="Load an external HTML file and embed it as a newsletter block">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+                        <span>Import HTML</span>
+                    </div>
                 </div>
             </div>
 
@@ -1669,6 +1673,7 @@
     <!-- HIDDEN INPUT TRIGGERS -->
     <input type="file" id="image-file-uploader" accept="image/*" style="display:none;">
     <input type="file" id="project-file-uploader" accept=".craftproject" style="display:none;">
+    <input type="file" id="html-file-uploader" accept=".html,.htm,text/html" style="display:none;">
 
     <!-- STARTUP PROJECT WIZARD MODAL -->
     <div class="modal-overlay active" id="startup-modal">
@@ -2139,6 +2144,46 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
             clean(div);
             return div.innerHTML;
+        }
+
+        // Advanced DOM-based sanitizer for full HTML imports.
+        // Strips execution vectors (scripts, iframes, inline events) but preserves 
+        // layout elements (tables, imgs, styles) unlike sanitizeHTML.
+        function cleanImportedHTML(rawHtml) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(rawHtml, 'text/html');
+            
+            // Extract styles before cleaning to preserve them
+            const styles = [];
+            doc.querySelectorAll('style').forEach(el => {
+                styles.push(el.innerHTML);
+                el.remove(); // Remove from DOM so they are not duplicated
+            });
+
+            // Strip dangerous tags
+            const badTags = ['script', 'iframe', 'object', 'embed', 'base', 'meta', 'link'];
+            badTags.forEach(tag => {
+                doc.querySelectorAll(tag).forEach(el => el.remove());
+            });
+            
+            // Strip inline event handlers and javascript URIs
+            const allElements = doc.querySelectorAll('*');
+            allElements.forEach(el => {
+                const attrs = Array.from(el.attributes);
+                attrs.forEach(attr => {
+                    const name = attr.name.toLowerCase();
+                    if (name.startsWith('on')) {
+                        el.removeAttribute(attr.name);
+                    }
+                    if ((name === 'href' || name === 'src') && attr.value.trim().toLowerCase().startsWith('javascript:')) {
+                        el.setAttribute(attr.name, '#');
+                    }
+                });
+            });
+
+            // Reconstruct payload: <style> block followed by safe body HTML
+            const styleStr = styles.length > 0 ? '<style>\n' + styles.join('\n') + '\n</style>\n' : '';
+            return styleStr + doc.body.innerHTML;
         }
 
         // HTML-escape for safe interpolation into template literals (export compiler)
@@ -2993,8 +3038,80 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
+        // CSS SCOPER: rewrites every selector in a raw CSS string to be prefixed
+        // with a scope ID, preventing leaked styles from imported HTML blocks.
+        function scopeImportedCSS(css, scopeId) {
+            const prefix = '#' + scopeId;
+
+            // Remove CSS comments
+            css = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+            // Walk through the CSS character-by-character, tracking brace depth
+            // so we can correctly scope selectors while leaving @-rule blocks intact.
+            let result = '';
+            let i = 0;
+            const len = css.length;
+
+            while (i < len) {
+                // Skip whitespace at top level
+                const blockStart = css.indexOf('{', i);
+                if (blockStart === -1) break;
+
+                const rawSelectors = css.slice(i, blockStart);
+
+                // Detect @-rules (media, keyframes, supports, font-face…)
+                const isAtRule = rawSelectors.trimStart().startsWith('@');
+
+                // Find the matching closing brace
+                let depth = 1;
+                let j = blockStart + 1;
+                while (j < len && depth > 0) {
+                    if (css[j] === '{') depth++;
+                    else if (css[j] === '}') depth--;
+                    j++;
+                }
+                const blockEnd = j; // points just AFTER the closing }
+                const declarations = css.slice(blockStart + 1, j - 1);
+
+                if (isAtRule) {
+                    // For @media / @supports: recurse to scope inner rules
+                    if (/^@(media|supports)/i.test(rawSelectors.trim())) {
+                        result += rawSelectors.trim() + ' {' + scopeImportedCSS(declarations, scopeId) + '}\n';
+                    } else {
+                        // @keyframes, @font-face, etc. — keep verbatim
+                        result += rawSelectors + '{' + declarations + '}\n';
+                    }
+                } else {
+                    // Regular rule — prefix each selector
+                    const scoped = rawSelectors.split(',').map(sel => {
+                        sel = sel.trim();
+                        if (!sel) return '';
+                        // body, html, *, :root alone → replace with prefix
+                        if (/^(html|body|\*|:root)$/.test(sel)) return prefix;
+                        // body > ... or body .class etc.
+                        if (/^(html|body)\b/.test(sel)) {
+                            return prefix + ' ' + sel.replace(/^(html|body)\s*/, '');
+                        }
+                        // Pseudo-elements/classes on * → scope it
+                        if (sel.startsWith('*')) {
+                            return prefix + ' ' + sel;
+                        }
+                        return prefix + ' ' + sel;
+                    }).filter(Boolean).join(', ');
+                    result += scoped + ' {' + declarations + '}\n';
+                }
+
+                i = blockEnd;
+            }
+
+            return result;
+        }
+
         // RENDER WORKSPACE DOCUMENT FRAME
         function renderDocumentCanvas() {
+            // Clean up any scoped <style> elements injected by a previous html-import render
+            document.querySelectorAll('style[id^="hi-styles-"]').forEach(el => el.remove());
+
             domCanvas.innerHTML = '';
             
             // Set dynamic frame size based on active page orientation
@@ -3187,7 +3304,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     }
                     blockContent.style.backgroundColor = blockBg;
                     blockContent.style.color = block.styles.color || '#333333';
-                    blockContent.style.padding = getPaddingPx(block.styles.padding);
+                    // html-import controls its own padding via the scoped container — suppress outer wrapper padding
+                    blockContent.style.padding = block.type === 'html-import' ? '0' : getPaddingPx(block.styles.padding);
+                    blockContent.style.overflow = block.type === 'html-import' ? 'hidden' : '';
                     // Apply per-block font override if set
                     if (block.styles.fontFamily) {
                         blockContent.style.fontFamily = block.styles.fontFamily;
@@ -3265,6 +3384,42 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 `;
                             }
                             break;
+
+                        case 'html-import': {
+                            const hiHtml = block.content.htmlContent || '';
+                            const hiMinH = block.styles.minHeight && parseInt(block.styles.minHeight) > 0 ? block.styles.minHeight + 'px' : 'auto';
+                            if (hiHtml.trim()) {
+                                const hiScopeId = 'hi-' + block.id;
+
+                                // 1. Extract all <style> blocks from htmlContent
+                                const styleBlocks = [];
+                                let bodyHtml = hiHtml.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (m, css) => {
+                                    styleBlocks.push(css);
+                                    return '';
+                                }).trim();
+
+                                // 2. Scope the CSS and inject into <head> (NOT into body)
+                                //    This prevents global style leakage and ensures html2canvas picks them up.
+                                if (styleBlocks.length > 0) {
+                                    const rawCss = styleBlocks.join('\n');
+                                    const scopedCss = scopeImportedCSS(rawCss, hiScopeId);
+                                    const styleEl = document.createElement('style');
+                                    styleEl.id = 'hi-styles-' + block.id;
+                                    styleEl.textContent = scopedCss;
+                                    document.head.appendChild(styleEl);
+                                }
+
+                                // 3. Render only the clean body HTML inside a scoped container
+                                html = `<div id="${hiScopeId}" style="display:block; width:100%; max-width:100%; overflow:hidden; box-sizing:border-box; min-height:${hiMinH};">${bodyHtml}</div>`;
+                            } else {
+                                html = `<div style="padding: 24px; text-align: center; border: 2px dashed #cbd5e1; border-radius: 8px; margin: 12px; color: #94a3b8;">
+                                    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 8px; display:block;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+                                    <div style="font-weight: 700; font-size: 13px; color: #475569;">Import HTML Block</div>
+                                    <div style="font-size: 11px; margin-top: 4px;">Click this block, then use the Inspector panel<br>to load an HTML file or paste HTML code.</div>
+                                </div>`;
+                            }
+                            break;
+                        }
 
                         case 'freeform':
                             const fWImg = block.styles.imgWidth ? block.styles.imgWidth + '%' : '100%';
@@ -3478,7 +3633,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                     galleryRows += `
                                         <td width="${cellWidth}" valign="top" align="center" style="padding: 4px;">
                                             ${itemImgHtml}
-                                            <div class="editable-gallery-caption" data-index="${index}" style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;" contenteditable="true">${item.caption}</div>
+                                            <div class="editable-gallery-caption" data-index="${index}" style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;" contenteditable="true">${escapeHtml(item.caption)}</div>
                                         </td>
                                     `;
                                 });
@@ -4146,6 +4301,56 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             `;
 
             switch (block.type) {
+                case 'html-import': {
+                    const hiInspPad = block.styles.padding || 'medium';
+                    const hiInspMinH = block.styles.minHeight ? parseInt(block.styles.minHeight) : 0;
+                    const hiContentLen = block.content.htmlContent ? block.content.htmlContent.length : 0;
+                    controls = `
+                        <div style="background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(6,182,212,0.08)); border: 1px solid rgba(99,102,241,0.3); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #818cf8; margin-bottom: 6px;">&lt;/&gt; HTML Import Block</div>
+                            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">Load an external HTML file or paste HTML code. The content renders inside the newsletter canvas and is included in exports.</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Load HTML from File</label>
+                            <button class="btn btn-primary" style="width:100%; justify-content:center;" id="btn-html-import-file">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                Browse &amp; Load .html File
+                            </button>
+                            ${hiContentLen > 0 ? '<div style="font-size: 10px; color: var(--success); margin-top: 5px;">&#10003; HTML loaded (' + Math.round(hiContentLen / 1024 * 10) / 10 + ' KB) &mdash; ' + (block.content.sourceFile || 'pasted content') + '</div>' : '<div style="font-size: 10px; color: var(--text-muted); margin-top: 5px;">No HTML file loaded yet</div>'}
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Or Paste / Edit HTML Code</label>
+                            <textarea class="form-input" id="inp-html-import-code" style="height: 160px; resize: vertical; font-family: monospace; font-size: 11px; line-height: 1.5;" placeholder="Paste your HTML content here...">${block.content.htmlContent ? block.content.htmlContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</textarea>
+                        </div>
+                        <div class="form-group" style="display:flex; gap:8px;">
+                            <button class="btn btn-success" style="flex:1; justify-content:center;" id="btn-html-import-apply">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                Apply HTML
+                            </button>
+                            <button class="btn" style="flex:1; justify-content:center; color:var(--danger);" id="btn-html-import-clear">Clear</button>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Block Padding</label>
+                            <select class="form-select" id="inp-hi-padding">
+                                <option value="none" ${hiInspPad === 'none' ? 'selected' : ''}>None (flush)</option>
+                                <option value="small" ${hiInspPad === 'small' ? 'selected' : ''}>Small (8px)</option>
+                                <option value="medium" ${hiInspPad === 'medium' ? 'selected' : ''}>Medium (16px)</option>
+                                <option value="large" ${hiInspPad === 'large' ? 'selected' : ''}>Large (28px)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Min Block Height</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="form-range" id="inp-hi-minheight" min="0" max="800" step="20" value="${hiInspMinH}">
+                                <span class="slider-val-label">${hiInspMinH > 0 ? hiInspMinH + 'px' : 'Auto'}</span>
+                            </div>
+                        </div>
+                        ${commonBg}
+                        ${moveBlockDropdown}
+                    `;
+                    break;
+                }
+
                 case 'hero':
                     const heroTitleSize = block.styles.titleSize ? parseInt(block.styles.titleSize) : 24;
                     controls = `
@@ -5158,7 +5363,86 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     renderInspectorProperties(block);
                 };
             }
+
+            // HTML Import block connectors
+            const htmlImportFileBtn = domInspector.querySelector('#btn-html-import-file');
+            if (htmlImportFileBtn) {
+                htmlImportFileBtn.onclick = () => {
+                    const htmlUploader = document.getElementById('html-file-uploader');
+                    if (htmlUploader) {
+                        htmlUploader._activeBlock = block;
+                        htmlUploader.value = '';
+                        htmlUploader.click();
+                    }
+                };
+            }
+
+            const htmlApplyBtn = domInspector.querySelector('#btn-html-import-apply');
+            if (htmlApplyBtn) {
+                htmlApplyBtn.onclick = () => {
+                    const textarea = domInspector.querySelector('#inp-html-import-code');
+                    if (textarea) {
+                        // Apply robust DOM sanitization to pasted content
+                        const safeHtml = cleanImportedHTML(textarea.value);
+                        block.content.htmlContent = safeHtml;
+                        block.content.sourceFile = 'pasted content';
+                        saveDraft();
+                        renderDocumentCanvas();
+                        renderInspectorProperties(block);
+                        showToast('HTML content applied!');
+                    }
+                };
+            }
+
+            const htmlClearBtn = domInspector.querySelector('#btn-html-import-clear');
+            if (htmlClearBtn) {
+                htmlClearBtn.onclick = () => {
+                    if (confirm('Clear all HTML content from this block?')) {
+                        block.content.htmlContent = '';
+                        block.content.sourceFile = '';
+                        saveDraft();
+                        renderDocumentCanvas();
+                        renderInspectorProperties(block);
+                    }
+                };
+            }
         }
+
+        // HTML FILE UPLOADER HANDLER
+        document.getElementById('html-file-uploader').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const uploader = e.target;
+            const block = uploader._activeBlock;
+            if (!block) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                alert('HTML file is too large. Maximum allowed is 2 MB.');
+                uploader.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const raw = ev.target.result || '';
+                
+                // Process through the secure DOM sanitizer
+                const safeHtml = cleanImportedHTML(raw);
+
+                block.content.htmlContent = safeHtml;
+                block.content.sourceFile = file.name;
+                saveDraft();
+                renderDocumentCanvas();
+                renderInspectorProperties(block);
+                showToast('HTML loaded from "' + file.name + '"!');
+                uploader.value = '';
+            };
+            reader.onerror = () => {
+                alert('Failed to read the HTML file.');
+                uploader.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        };
 
         // BIND MODIFIED BLOCK COMPONENT PROPERTIES IN THE STATE
         function updateBlockProperty(block, id, val) {
@@ -5274,6 +5558,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             if (id === 'inp-foot-disc') block.content.disclaimer = val;
             if (id === 'inp-foot-contact') block.content.contact = val;
             if (id === 'inp-foot-color') block.styles.color = val;
+
+            // HTML Import Block
+            if (id === 'inp-hi-padding') block.styles.padding = val;
+            if (id === 'inp-hi-minheight') {
+                block.styles.minHeight = val;
+                const lbl = domInspector.querySelector('#inp-hi-minheight + .slider-val-label') || domInspector.querySelector('#inp-hi-minheight')?.nextElementSibling;
+                if (lbl) lbl.textContent = parseInt(val) > 0 ? val + 'px' : 'Auto';
+            }
 
             // Freeform Block resizers
             if (id === 'inp-free-title') block.content.title = val;
@@ -5414,6 +5706,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             textLeft: '10%', textTop: '220px', textWidth: '80%'
                         },
                         styles: { backgroundColor: '#ffffff', color: '#333333', alignment: 'left', padding: 'medium', titleSize: '20px', textSize: '13px', imgWidth: '100', imgHeight: '200', blockHeight: '450' }
+                    };
+                case 'html-import':
+                    return {
+                        id: randId, type: 'html-import',
+                        content: { htmlContent: '', sourceFile: '' },
+                        styles: { backgroundColor: '#ffffff', padding: 'medium', minHeight: '0' }
                     };
             }
         }
@@ -5605,6 +5903,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                             }
                             break;
 
+                        case 'html-import':
+                            blockHTML = `<div style="display:block; width:100%; max-width:100%; overflow:hidden; box-sizing:border-box; min-height:${block.styles.minHeight && parseInt(block.styles.minHeight) > 0 ? block.styles.minHeight + 'px' : 'auto'};">${block.content.htmlContent || '<!-- HTML Import Block: No content -->'}</div>`;
+                            break;
+
                         case 'gallery':
                             const gLayoutComp = block.content.layout || 'grid';
                             const gImgHeightComp = block.styles.imgHeight ? block.styles.imgHeight + 'px' : '100px';
@@ -5625,7 +5927,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                     cardsHtmlComp += `
                                         <div style="position: absolute; left: ${item.left}; top: ${item.top}; width: ${item.width}; z-index: 10;">
                                             ${itemImg}
-                                            <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3; text-align: center;">${item.caption}</div>
+                                            <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3; text-align: center;">${escapeHtml(item.caption)}</div>
                                         </div>
                                     `;
                                 });
@@ -5651,7 +5953,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                                 ${itemImg}
                                             </td>
                                             <td valign="top" style="padding: 8px 12px; font-family: var(--body-font);">
-                                                <div style="font-size:calc(12px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.4;">${item.caption}</div>
+                                                <div style="font-size:calc(12px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.4;">${escapeHtml(item.caption)}</div>
                                             </td>
                                         </tr>
                                     `;
@@ -5686,7 +5988,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                     gRows += `
                                         <td width="${gCellWidth}" valign="top" align="center" style="padding: 4px; font-family: var(--body-font);">
                                             ${itemImg}
-                                            <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;">${item.caption}</div>
+                                            <div style="margin-top: 6px; font-size:calc(11px * var(--font-scale)); font-weight:500; color: ${block.styles.captionColor || '#4b5563'}; line-height: 1.3;">${escapeHtml(item.caption)}</div>
                                         </td>
                                     `;
                                 });
@@ -6259,7 +6561,26 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     const pdfDrawW = currentW;
                     const pdfDrawH = currentW * (canvas.height / canvas.width);
 
-                    activeDoc.addImage(imgData, 'JPEG', 0, 0, pdfDrawW, pdfDrawH, undefined, 'FAST');
+                    let heightLeft = pdfDrawH;
+                    let position = 0;
+
+                    activeDoc.addImage(imgData, 'JPEG', 0, position, pdfDrawW, pdfDrawH, undefined, 'FAST');
+                    heightLeft -= currentH;
+
+                    // Automatically slice tall page sheets across multiple PDF pages
+                    // (useful when loading long HTML imports into a single block)
+                    while (heightLeft > 0) {
+                        position = position - currentH;
+                        activeDoc.addPage('a4', isPageLandscape ? 'l' : 'p');
+                        activeDoc.addImage(imgData, 'JPEG', 0, position, pdfDrawW, pdfDrawH, undefined, 'FAST');
+                        heightLeft -= currentH;
+                    }
+
+                    // Add invisible clickable link rectangles over each CTA button in the PDF.
+                    // Coordinate mapping: CSS pixel → PDF point via the same scale factor
+                    // used to fit the page image onto the A4 canvas.
+                    // Keep track of the PDF page number where this sheet started
+                    const sheetStartPdfPage = activeDoc.internal.getNumberOfPages() - Math.ceil(pdfDrawH / currentH) + 1;
 
                     // Add invisible clickable link rectangles over each CTA button in the PDF.
                     // Coordinate mapping: CSS pixel → PDF point via the same scale factor
@@ -6267,13 +6588,25 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                     const pdfPxScale = pdfDrawW / captureWidth;
                     ctaLinkData.forEach(ld => {
                         if (ld.url && ld.url !== '#' && !ld.url.startsWith('file:') && ld.relW > 0 && ld.relH > 0) {
+                            const globalPdfY = ld.relY * pdfPxScale;
+                            const pageOffset = Math.floor(globalPdfY / currentH);
+                            const localPdfY = globalPdfY - (pageOffset * currentH);
+                            const targetPdfPage = sheetStartPdfPage + pageOffset;
+                            
+                            // Temporarily switch to the correct page to add the link
+                            const originalPage = activeDoc.internal.getCurrentPageInfo().pageNumber;
+                            activeDoc.setPage(targetPdfPage);
+                            
                             activeDoc.link(
                                 ld.relX * pdfPxScale,
-                                ld.relY * pdfPxScale,
+                                localPdfY,
                                 ld.relW * pdfPxScale,
                                 ld.relH * pdfPxScale,
                                 { url: ld.url }
                             );
+                            
+                            // Restore back to the end page in case we need to add another sheet
+                            activeDoc.setPage(originalPage);
                         }
                     });
 
@@ -7094,6 +7427,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
                                 if (['imgUrl','photoUrl','bgImage'].includes(k) &&
                                     typeof obj[k] === 'string' && obj[k].startsWith('data:')) {
                                     obj[k] = '';
+                                } else if (k === 'htmlContent' && typeof obj[k] === 'string' && obj[k].length > 50000) {
+                                    obj[k] = ''; // Drop huge HTML payloads from localStorage cache fallback
                                 } else {
                                     strip(obj[k]);
                                 }
